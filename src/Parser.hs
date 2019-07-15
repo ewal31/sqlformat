@@ -41,9 +41,21 @@ instance (Comp (a -> b) d r1, r ~ (c -> r1)) => Comp (a -> b) (c -> d) r where
 
 type TableName = ByteString
 
+data ON_EXP
+  = ON ByteString
+  | AND ByteString
+  deriving (Eq, Show)
+
 data SELECT_MOD
   = DISTINCT
   | ALL
+  deriving (Eq, Show)
+
+data JOINTYPE
+  = INNER
+  | LEFT
+  | RIGHT
+  | FULL
   deriving (Eq, Show)
 
 data COLUMNS_EXP =
@@ -54,6 +66,13 @@ data COLUMNS_EXP =
 data FROM_EXP =
   FROM (Maybe SELECT_EXP)
        TableName
+  deriving (Eq, Show)
+
+data JOIN_EXP =
+  JOIN JOINTYPE
+       (Maybe SELECT_EXP)
+       TableName
+       [ON_EXP]
   deriving (Eq, Show)
 
 newtype WHERE_EXP =
@@ -91,8 +110,7 @@ parseSelectExp nxt =
   fmap (`applyFnToTuple` ((,) ... SELECT)) $
   parseColumnsExp $
   parseFromExp $
-  parseWhereExp $
-  parseGroupByExp $ parseHavingExp $ parseOrderByExp $ parseLimitExp $ whitespace *> fmap (, ()) nxt
+  parseWhereExp $ parseGroupByExp $ parseHavingExp $ parseOrderByExp $ parseLimitExp $ finally nxt
 
 parseColumnsExp :: Parser a -> Parser (COLUMNS_EXP, a)
 parseColumnsExp nxt = do
@@ -110,33 +128,47 @@ parseFromExp nxt = do
   select <- parseSubExp parseSelectExp
   fmap (liftA2 (,) (FROM select . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))
 
+parseJoinExp :: Parser a -> Parser ([JOIN_EXP], a)
+parseJoinExp nxt = joins <|> fmap ([], ) (whitespace *> nxt)
+  where
+    join psr res = psr *>| anyCaseString "JOIN" $> res <* whitespace
+    joins = do
+      joinType <-
+        join (anyCaseString "INNER" <|> pure ()) INNER <|>
+        join (anyCaseString "LEFT" *>| (anyCaseString "OUTER" <|> pure ())) LEFT <|>
+        join (anyCaseString "RIGHT" *>| (anyCaseString "OUTER" <|> pure ())) RIGHT <|>
+        join (anyCaseString "FULL" *>| (anyCaseString "OUTER" <|> pure ())) FULL
+      select <- parseSubExp parseSelectExp
+      rest <- anyUntilThat (whitespace *> nxt)
+      return $ liftA2 (,) ((: []) . flip (JOIN joinType select) [] . BS.pack . fst) snd rest
+
 parseWhereExp :: Parser a -> Parser (Maybe WHERE_EXP, a)
 parseWhereExp nxt =
-  (anyCaseString "WHERE" *> whitespace *>
+  (anyCaseString "WHERE" *>|
    fmap (liftA2 (,) (Just . WHERE . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseGroupByExp :: Parser a -> Parser (Maybe GROUP_BY_EXP, a)
 parseGroupByExp nxt =
-  (anyCaseString "GROUP BY" *> whitespace *>
+  (anyCaseString "GROUP BY" *>|
    fmap (liftA2 (,) (Just . GROUP_BY . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseHavingExp :: Parser a -> Parser (Maybe HAVING_EXP, a)
 parseHavingExp nxt =
-  (anyCaseString "HAVING" *> whitespace *>
+  (anyCaseString "HAVING" *>|
    fmap (liftA2 (,) (Just . HAVING . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseOrderByExp :: Parser a -> Parser (Maybe ORDER_BY_EXP, a)
 parseOrderByExp nxt =
-  (anyCaseString "ORDER BY" *> whitespace *>
+  (anyCaseString "ORDER BY" *>|
    fmap (liftA2 (,) (Just . ORDER_BY . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseLimitExp :: Parser a -> Parser (Maybe LIMIT_EXP, a)
 parseLimitExp nxt =
-  (anyCaseString "LIMIT" *> whitespace *>
+  (anyCaseString "LIMIT" *>|
    fmap (liftA2 (,) (Just . LIMIT . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
@@ -146,6 +178,19 @@ parseSubExp f = fmap (Just . fst) subExp <|> pure Nothing
     subExp = do
       string "(" *> whitespace
       f $ whitespace *> string ")" <* whitespace
+
+parseOnExp :: Parser a -> Parser ([ON_EXP], a)
+parseOnExp nxt = parse <|> fmap ([], ) (whitespace *> nxt)
+  where
+    exp key nxt = anyCaseString key *>| anyUntilThat (whitespace *> nxt)
+    and nxt = fmap (liftA2 (,) (AND . BS.pack . fst) snd) $ exp "AND" nxt
+    parse = do
+      res <- fmap (liftA2 (,) (ON . BS.pack . fst) snd) $ exp "ON" $ and nxt
+      --return ([ON . BS.pack . fst $ res], snd res)
+      return ([], snd . snd $ res)
+
+finally :: Parser a -> Parser (a, ())
+finally = (*>) whitespace . fmap (, ())
 
 upper8 :: Word8 -> Word8
 upper8 c =
@@ -169,6 +214,9 @@ anyCaseString = BS.foldr ((*>) . anyCase) (pure ())
 
 whitespace :: Parser ()
 whitespace = skipMany (word8 9 <|> word8 10 <|> word8 13 <|> word8 32)
+
+(*>|) :: Parser a -> Parser b -> Parser b
+(*>|) a b = a *> whitespace *> b
 
 anyTill :: Parser a -> Parser [Word8]
 anyTill next = manyTill anyWord8 (endOfInput <|> next $> ())

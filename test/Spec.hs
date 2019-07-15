@@ -15,9 +15,11 @@ tests =
     , testParseOrderByExp
     , testParseHavingExp
     , testParseGroupByExp
+    , testParseJoinExp
     , testParseFromExp
     , testParseColumnsExp
     , testParseSubExp
+    , testParseOnExp
     , testParseSelectExp
     ]
 
@@ -132,6 +134,46 @@ testParseWhereExp =
       "WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000"
   ]
 
+testParseJoinExp =
+  "parseJoinExp" ~:
+  [ "JOIN table" ~: Right ([P.JOIN P.INNER Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN table"
+  , "INNER JOIN table" ~: Right ([P.JOIN P.INNER Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "INNER JOIN table"
+  , "LEFT JOIN table" ~: Right ([P.JOIN P.LEFT Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "LEFT JOIN table"
+  , "LEFT OUTER JOIN table" ~: Right ([P.JOIN P.LEFT Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "LEFT OUTER JOIN table"
+  , "RIGHT JOIN table" ~: Right ([P.JOIN P.RIGHT Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "RIGHT JOIN table"
+  , "RIGHT OUTER JOIN table" ~: Right ([P.JOIN P.RIGHT Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "RIGHT OUTER JOIN table"
+  , "FULL JOIN table" ~: Right ([P.JOIN P.FULL Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "FULL JOIN table"
+  , "FULL OUTER JOIN table" ~: Right ([P.JOIN P.FULL Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "FULL OUTER JOIN table"
+  , "JOIN (SELECT * FROM table1) table2" ~:
+    Right
+      ( [ P.JOIN
+            P.INNER
+            (Just $
+             P.SELECT
+               (P.COLUMNS Nothing "*")
+               (P.FROM Nothing "table1")
+               Nothing
+               Nothing
+               Nothing
+               Nothing
+               Nothing)
+            "table2"
+            []
+        ]
+      , ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN (SELECT * FROM table1) table2"
+  , "JOIN table ON a = b" ~: Right ([P.JOIN P.INNER Nothing "table" []], ()) ~=?
+    BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN table ON a = b"
+  ]
+
 testParseFromExp =
   "parseFromExp" ~:
   [ "FROM articles" ~:
@@ -221,6 +263,14 @@ testParseSubExp =
     BP.parseOnly (P.parseSubExp P.parseColumnsExp) "( SELECT B ) something else"
   , "something else" ~: Right Nothing ~=?
     BP.parseOnly (P.parseSubExp P.parseColumnsExp) "something else"
+  ]
+
+testParseOnExp =
+  "parseOnExp" ~:
+  [ "ON a = b" ~: Right ([P.ON "a = b"], ()) ~=?
+    BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b"
+  , "ON a = b AND c = d" ~: Right ([P.ON "a = b", P.AND "c = d"], ()) ~=?
+    BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d"
   ]
 
 testParseSelectExp =

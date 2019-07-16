@@ -180,14 +180,13 @@ parseSubExp f = fmap (Just . fst) subExp <|> pure Nothing
       f $ whitespace *> string ")" <* whitespace
 
 parseOnExp :: Parser a -> Parser ([ON_EXP], a)
-parseOnExp nxt = parse <|> fmap ([], ) (whitespace *> nxt)
+parseOnExp = run "ON" ON
   where
-    exp key nxt = anyCaseString key *>| anyUntilThat (whitespace *> nxt)
-    and nxt = fmap (liftA2 (,) (AND . BS.pack . fst) snd) $ exp "AND" nxt
-    parse = do
-      res <- fmap (liftA2 (,) (ON . BS.pack . fst) snd) $ exp "ON" $ and nxt
-      --return ([ON . BS.pack . fst $ res], snd res)
-      return ([], snd . snd $ res)
+    run :: ByteString -> (ByteString -> ON_EXP) -> Parser a -> Parser ([ON_EXP], a)
+    run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
+    parseKeyword key dat nxt =
+      fmap (liftA2 (,) (liftA2 (:) (dat . BS.pack . fst) (fst . snd)) (snd . snd)) $
+      anyCaseString key *>| anyUntilThat (whitespace *> run "AND" AND nxt)
 
 finally :: Parser a -> Parser (a, ())
 finally = (*>) whitespace . fmap (, ())

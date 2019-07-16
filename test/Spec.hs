@@ -271,6 +271,10 @@ testParseOnExp =
     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b"
   , "ON a = b AND c = d" ~: Right ([P.ON "a = b", P.AND "c = d"], ()) ~=?
     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d"
+  , "ON a = b AND c = d AND e = f AND g = h" ~:
+    Right ([P.ON "a = b", P.AND "c = d", P.AND "e = f", P.AND "g = h"], ()) ~=?
+    BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d AND e = f AND g = h"
+  , "AND c = d" ~: Left "endOfInput" ~=? BP.parseOnly (P.parseOnExp BP.endOfInput) "AND c = d"
   ]
 
 testParseSelectExp =

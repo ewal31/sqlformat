@@ -41,11 +41,6 @@ instance (Comp (a -> b) d r1, r ~ (c -> r1)) => Comp (a -> b) (c -> d) r where
 
 type TableName = ByteString
 
-data ON_EXP
-  = ON ByteString
-  | AND ByteString
-  deriving (Eq, Show)
-
 data SELECT_MOD
   = DISTINCT
   | ALL
@@ -75,12 +70,18 @@ data JOIN_EXP =
        [ON_EXP]
   deriving (Eq, Show)
 
-newtype WHERE_EXP =
-  WHERE ByteString
+data WHERE_EXP
+  = WHERE ByteString
+  | W_AND ByteString
   deriving (Eq, Show)
 
 newtype GROUP_BY_EXP =
   GROUP_BY ByteString
+  deriving (Eq, Show)
+
+data ON_EXP
+  = ON ByteString
+  | O_AND ByteString
   deriving (Eq, Show)
 
 newtype HAVING_EXP =
@@ -148,6 +149,15 @@ parseWhereExp nxt =
    fmap (liftA2 (,) (Just . WHERE . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
+parseWhereExp' :: Parser a -> Parser ([WHERE_EXP], a)
+parseWhereExp' = run "WHERE" WHERE
+  where
+    run :: ByteString -> (ByteString -> WHERE_EXP) -> Parser a -> Parser ([WHERE_EXP], a)
+    run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
+    parseKeyword key dat nxt =
+      fmap (liftA2 (,) (liftA2 (:) (dat . BS.pack . fst) (fst . snd)) (snd . snd)) $
+      anyCaseString key *>| anyUntilThat (whitespace *> run "AND" W_AND nxt)
+
 parseGroupByExp :: Parser a -> Parser (Maybe GROUP_BY_EXP, a)
 parseGroupByExp nxt =
   (anyCaseString "GROUP BY" *>|
@@ -186,7 +196,7 @@ parseOnExp = run "ON" ON
     run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
     parseKeyword key dat nxt =
       fmap (liftA2 (,) (liftA2 (:) (dat . BS.pack . fst) (fst . snd)) (snd . snd)) $
-      anyCaseString key *>| anyUntilThat (whitespace *> run "AND" AND nxt)
+      anyCaseString key *>| anyUntilThat (whitespace *> run "AND" O_AND nxt)
 
 finally :: Parser a -> Parser (a, ())
 finally = (*>) whitespace . fmap (, ())

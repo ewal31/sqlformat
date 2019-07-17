@@ -112,24 +112,29 @@ testParseGroupByExp =
 
 testParseWhereExp =
   "parseWhereExp" ~:
-  [ "WHERE id = 2" ~:
-    Right (Just $ P.WHERE "id = 2", (Nothing, (Nothing, (Nothing, (Nothing, ()))))) ~=?
+  [ "WHERE id = 2" ~: Right ([P.WHERE "id = 2"], (Nothing, (Nothing, (Nothing, (Nothing, ()))))) ~=?
     BP.parseOnly
-      (P.parseWhereExp $
+      (P.parseWhereExp' $
        P.parseGroupByExp $ P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "WHERE id = 2"
-  , "LIMIT 1000" ~: Right (Nothing, (Nothing, (Nothing, (Nothing, (Just $ P.LIMIT "1000", ()))))) ~=?
+  , "WHERE id = 2 AND a = 3" ~:
+    Right ([P.WHERE "id = 2", P.W_AND "a = 3"], (Nothing, (Nothing, (Nothing, (Nothing, ()))))) ~=?
     BP.parseOnly
-      (P.parseWhereExp $
+      (P.parseWhereExp' $
+       P.parseGroupByExp $ P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
+      "WHERE id = 2 AND a = 3"
+  , "LIMIT 1000" ~: Right ([], (Nothing, (Nothing, (Nothing, (Just $ P.LIMIT "1000", ()))))) ~=?
+    BP.parseOnly
+      (P.parseWhereExp' $
        P.parseGroupByExp $ P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "LIMIT 1000"
-  , "WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
+  , "WHERE id = 2 AND a = 3 AND b = c GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
     Right
-      ( Just $ P.WHERE "id = 2"
+      ( [P.WHERE "id = 2", P.W_AND "a = 3", P.W_AND "b = c"]
       , ( Just $ P.GROUP_BY "id, num"
         , (Just $ P.HAVING "id = 1", (Just $ P.ORDER_BY "id ASC", (Just $ P.LIMIT "1000", ()))))) ~=?
     BP.parseOnly
-      (P.parseWhereExp $
+      (P.parseWhereExp' $
        P.parseGroupByExp $ P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000"
   ]
@@ -269,10 +274,10 @@ testParseOnExp =
   "parseOnExp" ~:
   [ "ON a = b" ~: Right ([P.ON "a = b"], ()) ~=?
     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b"
-  , "ON a = b AND c = d" ~: Right ([P.ON "a = b", P.AND "c = d"], ()) ~=?
+  , "ON a = b AND c = d" ~: Right ([P.ON "a = b", P.O_AND "c = d"], ()) ~=?
     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d"
   , "ON a = b AND c = d AND e = f AND g = h" ~:
-    Right ([P.ON "a = b", P.AND "c = d", P.AND "e = f", P.AND "g = h"], ()) ~=?
+    Right ([P.ON "a = b", P.O_AND "c = d", P.O_AND "e = f", P.O_AND "g = h"], ()) ~=?
     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d AND e = f AND g = h"
   , "AND c = d" ~: Left "endOfInput" ~=? BP.parseOnly (P.parseOnExp BP.endOfInput) "AND c = d"
   ]

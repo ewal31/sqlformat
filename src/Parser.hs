@@ -64,7 +64,7 @@ data COLUMN_EXP =
 
 data COLUMNS_EXP =
   COLUMNS (Maybe SELECT_MOD)
-          ByteString
+          [COLUMN_EXP]
   deriving (Eq, Show)
 
 data FROM_EXP =
@@ -128,7 +128,7 @@ parseColumnsExp :: Parser a -> Parser (COLUMNS_EXP, a)
 parseColumnsExp nxt = do
   anyCaseString "SELECT" <* whitespace
   mod <- parseSelectMod <* whitespace
-  fmap (liftA2 (,) (COLUMNS mod . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))
+  fmap (liftA2 (,) (COLUMNS mod . fst) snd) (parseColumnExp (whitespace *> nxt))
   where
     parseSelectMod =
       (anyCaseString "DISTINCT" $> Just DISTINCT) <|> (anyCaseString "ALL" $> Just ALL) <|>

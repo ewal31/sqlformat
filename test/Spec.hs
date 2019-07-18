@@ -164,7 +164,7 @@ testParseJoinExp =
             P.INNER
             (Just $
              P.SELECT
-               (P.COLUMNS Nothing "*")
+               (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
                (P.FROM Nothing "table1")
                []
                []
@@ -188,7 +188,7 @@ testParseJoinExp =
             P.INNER
             (Just $
              P.SELECT
-               (P.COLUMNS Nothing "*")
+               (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
                (P.FROM Nothing "table1")
                []
                []
@@ -239,7 +239,7 @@ testParseFromExp =
       ( P.FROM
           (Just $
            P.SELECT
-             (P.COLUMNS Nothing "*")
+             (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
              (P.FROM Nothing "table")
              []
              []
@@ -259,7 +259,7 @@ testParseFromExp =
       ( P.FROM
           (Just $
            P.SELECT
-             (P.COLUMNS Nothing "*")
+             (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
              (P.FROM Nothing "table")
              []
              []
@@ -272,7 +272,7 @@ testParseFromExp =
               P.LEFT
               (Just $
                P.SELECT
-                 (P.COLUMNS Nothing "id, apples")
+                 (P.COLUMNS Nothing [P.COLUMN "id" Nothing, P.COLUMN "apples" Nothing])
                  (P.FROM Nothing "table")
                  []
                  []
@@ -296,7 +296,7 @@ testParseColumnsExp =
   "parseColumnsExp" ~:
   [ "SELECT * FROM table" ~:
     Right
-      ( P.COLUMNS Nothing "*"
+      ( P.COLUMNS Nothing [P.COLUMN "*" Nothing]
       , (P.FROM Nothing "table", ([], (Nothing, (Nothing, (Nothing, (Nothing, ()))))))) ~=?
     BP.parseOnly
       (P.parseColumnsExp $
@@ -306,7 +306,7 @@ testParseColumnsExp =
       "SELECT * FROM table"
   , "SELECT * FROM articles WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
     Right
-      ( P.COLUMNS Nothing "*"
+      ( P.COLUMNS Nothing [P.COLUMN "*" Nothing]
       , ( P.FROM Nothing "articles"
         , ( [P.WHERE "id = 2"]
           , ( Just $ P.GROUP_BY "id, num"
@@ -319,7 +319,7 @@ testParseColumnsExp =
       "SELECT * FROM articles WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000"
   , "SELECT DISTINCT * FROM articles WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
     Right
-      ( P.COLUMNS (Just P.DISTINCT) "*"
+      ( P.COLUMNS (Just P.DISTINCT) [P.COLUMN "*" Nothing]
       , ( P.FROM Nothing "articles"
         , ( [P.WHERE "id = 2"]
           , ( Just $ P.GROUP_BY "id, num"
@@ -334,9 +334,9 @@ testParseColumnsExp =
 
 testParseSubExp =
   "parseSubExp" ~:
-  [ "( SELECT B )" ~: Right (Just $ P.COLUMNS Nothing "B") ~=?
+  [ "( SELECT B )" ~: Right (Just $ P.COLUMNS Nothing [P.COLUMN "B" Nothing]) ~=?
     BP.parseOnly (P.parseSubExp P.parseColumnsExp) "( SELECT B )"
-  , "( SELECT B ) something else" ~: Right (Just $ P.COLUMNS Nothing "B") ~=?
+  , "( SELECT B ) something else" ~: Right (Just $ P.COLUMNS Nothing [P.COLUMN "B" Nothing]) ~=?
     BP.parseOnly (P.parseSubExp P.parseColumnsExp) "( SELECT B ) something else"
   , "something else" ~: Right Nothing ~=?
     BP.parseOnly (P.parseSubExp P.parseColumnsExp) "something else"
@@ -378,7 +378,7 @@ testParseSelectExp =
   [ "SELECT * FROM test" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "*")
+          (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
           (P.FROM Nothing "test")
           []
           []
@@ -402,11 +402,11 @@ testParseSelectExp =
   , "SELECT * FROM (SELECT DISTINCT * FROM test) test" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "*")
+          (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
           (P.FROM
              (Just $
               P.SELECT
-                (P.COLUMNS (Just P.DISTINCT) "*")
+                (P.COLUMNS (Just P.DISTINCT) [P.COLUMN "*" Nothing])
                 (P.FROM Nothing "test")
                 []
                 []
@@ -426,7 +426,7 @@ testParseSelectExp =
   , "SELECT a.* FROM test" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "a.*")
+          (P.COLUMNS Nothing [P.COLUMN "a.*" Nothing])
           (P.FROM Nothing "test")
           []
           []
@@ -439,7 +439,7 @@ testParseSelectExp =
   , "SELECT DISTINCT name FROM test" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS (Just P.DISTINCT) "name")
+          (P.COLUMNS (Just P.DISTINCT) [P.COLUMN "name" Nothing])
           (P.FROM Nothing "test")
           []
           []
@@ -452,7 +452,7 @@ testParseSelectExp =
   , "SELECT * FROM test LIMIT 1000" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "*")
+          (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
           (P.FROM Nothing "test")
           []
           []
@@ -465,7 +465,7 @@ testParseSelectExp =
   , "SELECT * FROM test WHERE id = 23" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "*")
+          (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
           (P.FROM Nothing "test")
           []
           [P.WHERE "id = 23"]
@@ -478,7 +478,7 @@ testParseSelectExp =
   , "SELECT * FROM test WHERE id = 23 AND ab = ba" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "*")
+          (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
           (P.FROM Nothing "test")
           []
           [P.WHERE "id = 23", P.W_AND "ab = ba"]
@@ -491,7 +491,7 @@ testParseSelectExp =
   , "SELECT id, COUNT(1) FROM test GROUP BY id" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "id, COUNT(1)")
+          (P.COLUMNS Nothing [P.COLUMN "id" Nothing, P.COLUMN "COUNT(1)" Nothing])
           (P.FROM Nothing "test")
           []
           []
@@ -504,7 +504,7 @@ testParseSelectExp =
   , "SELECT id, MAX(id) AS MAX FROM test" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "id, MAX(id) AS MAX")
+          (P.COLUMNS Nothing [P.COLUMN "id" Nothing, P.COLUMN "MAX(id)" (Just "MAX")])
           (P.FROM Nothing "test")
           []
           []
@@ -517,7 +517,7 @@ testParseSelectExp =
   , "SELECT name, SUM(val) FROM test GROUP BY name HAVING COUNT(1) > 2" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "name, SUM(val)")
+          (P.COLUMNS Nothing [P.COLUMN "name" Nothing, P.COLUMN "SUM(val)" Nothing])
           (P.FROM Nothing "test")
           []
           []
@@ -532,7 +532,7 @@ testParseSelectExp =
   , "SELECT name, SUM(val) FROM test RIGHT OUTER JOIN table2 ON name = 'Wendy' GROUP BY name HAVING COUNT(1) > 2" ~:
     Right
       ( P.SELECT
-          (P.COLUMNS Nothing "name, SUM(val)")
+          (P.COLUMNS Nothing [P.COLUMN "name" Nothing, P.COLUMN "SUM(val)" Nothing])
           (P.FROM Nothing "test")
           [P.JOIN P.RIGHT Nothing "table2" [P.ON "name = 'Wendy'"]]
           []

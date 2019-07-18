@@ -99,6 +99,7 @@ newtype LIMIT_EXP =
 data SELECT_EXP =
   SELECT COLUMNS_EXP
          FROM_EXP
+         [JOIN_EXP]
          [WHERE_EXP]
          (Maybe GROUP_BY_EXP)
          (Maybe HAVING_EXP)
@@ -111,6 +112,7 @@ parseSelectExp nxt =
   fmap (`applyFnToTuple` ((,) ... SELECT)) $
   parseColumnsExp $
   parseFromExp $
+  parseJoinExp $
   parseWhereExp $ parseGroupByExp $ parseHavingExp $ parseOrderByExp $ parseLimitExp $ finally nxt
 
 parseColumnsExp :: Parser a -> Parser (COLUMNS_EXP, a)

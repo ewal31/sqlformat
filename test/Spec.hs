@@ -20,6 +20,7 @@ tests =
     , testParseColumnsExp
     , testParseSubExp
     , testParseOnExp
+    , testParseColumnExp
     , testParseSelectExp
     ]
 
@@ -351,6 +352,25 @@ testParseOnExp =
     Right ([P.ON "a = b", P.O_AND "c = d", P.O_AND "e = f", P.O_AND "g = h"], ()) ~=?
     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d AND e = f AND g = h"
   , "AND c = d" ~: Left "endOfInput" ~=? BP.parseOnly (P.parseOnExp BP.endOfInput) "AND c = d"
+  ]
+
+testParseColumnExp =
+  "parseColumnExp" ~:
+  [ "id" ~: Right ([P.COLUMN "id" Nothing], ()) ~=?
+    BP.parseOnly (P.parseColumnExp BP.endOfInput) "id"
+  , "id, name" ~: Right ([P.COLUMN "id" Nothing, P.COLUMN "name" Nothing], ()) ~=?
+    BP.parseOnly (P.parseColumnExp BP.endOfInput) "id, name"
+  , "id AS something, name" ~:
+    Right ([P.COLUMN "id" (Just "something"), P.COLUMN "name" Nothing], ()) ~=?
+    BP.parseOnly (P.parseColumnExp BP.endOfInput) "id AS something, name"
+  , "id AS something, name AS something_else, a.*" ~:
+    Right
+      ( [ P.COLUMN "id" (Just "something")
+        , P.COLUMN "name" (Just "something_else")
+        , P.COLUMN "a.*" Nothing
+        ]
+      , ()) ~=?
+    BP.parseOnly (P.parseColumnExp BP.endOfInput) "id AS something, name AS something_else, a.*"
   ]
 
 testParseSelectExp =

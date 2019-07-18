@@ -41,6 +41,10 @@ instance (Comp (a -> b) d r1, r ~ (c -> r1)) => Comp (a -> b) (c -> d) r where
 
 type TableName = ByteString
 
+type ColumnName = ByteString
+
+type Alias = ByteString
+
 data SELECT_MOD
   = DISTINCT
   | ALL
@@ -51,6 +55,11 @@ data JOINTYPE
   | LEFT
   | RIGHT
   | FULL
+  deriving (Eq, Show)
+
+data COLUMN_EXP =
+  COLUMN ColumnName
+         (Maybe Alias)
   deriving (Eq, Show)
 
 data COLUMNS_EXP =
@@ -132,32 +141,22 @@ parseFromExp nxt = do
   fmap (liftA2 (,) (FROM select . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))
 
 parseJoinExp :: Parser a -> Parser ([JOIN_EXP], a)
-parseJoinExp = run
+parseJoinExp nxt =
+  do joinType <-
+       join (anyCaseString "INNER" <|> pure ()) INNER <|>
+       join (anyCaseString "LEFT" *>| (anyCaseString "OUTER" <|> pure ())) LEFT <|>
+       join (anyCaseString "RIGHT" *>| (anyCaseString "OUTER" <|> pure ())) RIGHT <|>
+       join (anyCaseString "FULL" *>| (anyCaseString "OUTER" <|> pure ())) FULL
+     select <- parseSubExp parseSelectExp
+     fmap
+       (liftA2
+          (,)
+          (liftA2 (:) (liftA2 (JOIN joinType select) (BS.pack . fst) (fst . snd)) (fst . snd . snd))
+          (snd . snd . snd))
+       (whitespace *> anyUntilThat (whitespace *> parseOnExp (parseJoinExp nxt)))
+     <|> fmap ([], ) (whitespace *> nxt)
   where
     join psr res = psr *>| anyCaseString "JOIN" $> res <* whitespace
-    run nxt =
-      do joinType <-
-           join (anyCaseString "INNER" <|> pure ()) INNER <|>
-           join (anyCaseString "LEFT" *>| (anyCaseString "OUTER" <|> pure ())) LEFT <|>
-           join (anyCaseString "RIGHT" *>| (anyCaseString "OUTER" <|> pure ())) RIGHT <|>
-           join (anyCaseString "FULL" *>| (anyCaseString "OUTER" <|> pure ())) FULL
-         select <- parseSubExp parseSelectExp
-         fmap
-           (liftA2
-              (,)
-              (liftA2
-                 (:)
-                 (liftA2 (JOIN joinType select) (BS.pack . fst) (fst . snd))
-                 (fst . snd . snd))
-              (snd . snd . snd))
-           (whitespace *> anyUntilThat (whitespace *> parseOnExp (run nxt)))
-         -- rest <- whitespace *> anyUntilThat (whitespace *> parseOnExp (run nxt))
-         -- return
-         --   ( (:)
-         --       (JOIN joinType select (BS.pack . fst $ rest) (fst . snd $ rest))
-         --       (fst . snd . snd $ rest)
-         --   , snd . snd . snd $ rest)
-     <|> fmap ([], ) (whitespace *> nxt)
 
 parseWhereExp :: Parser a -> Parser ([WHERE_EXP], a)
 parseWhereExp = run "WHERE" WHERE
@@ -207,6 +206,23 @@ parseOnExp = run "ON" ON
     parseKeyword key dat nxt =
       fmap (liftA2 (,) (liftA2 (:) (dat . BS.pack . fst) (fst . snd)) (snd . snd)) $
       anyCaseString key *>| anyUntilThat (whitespace *> run "AND" O_AND nxt)
+
+parseColumnExp :: Parser a -> Parser ([COLUMN_EXP], a)
+parseColumnExp nxt =
+  fmap
+    (liftA2
+       (,)
+       (liftA2 (:) (liftA2 COLUMN (BS.pack . fst) (fst . snd)) (fst . snd . snd))
+       (snd . snd . snd)) $
+  anyUntilThat $ whitespace *> as nxt
+  where
+    as :: Parser a -> Parser (Maybe Alias, ([COLUMN_EXP], a))
+    as nxt =
+      fmap
+        (liftA2 (,) (Just . BS.pack . fst) snd)
+        (anyCaseString "AS" *> whitespace *> anyUntilThat (whitespace *> end nxt)) <|>
+      fmap (Nothing, ) (whitespace *> end nxt)
+    end nxt = (string "," *>| parseColumnExp nxt) <|> fmap ([], ) (whitespace *> nxt)
 
 finally :: Parser a -> Parser (a, ())
 finally = (*>) whitespace . fmap (, ())

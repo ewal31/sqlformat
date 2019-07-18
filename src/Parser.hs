@@ -99,7 +99,7 @@ newtype LIMIT_EXP =
 data SELECT_EXP =
   SELECT COLUMNS_EXP
          FROM_EXP
-         (Maybe WHERE_EXP)
+         [WHERE_EXP]
          (Maybe GROUP_BY_EXP)
          (Maybe HAVING_EXP)
          (Maybe ORDER_BY_EXP)
@@ -130,27 +130,35 @@ parseFromExp nxt = do
   fmap (liftA2 (,) (FROM select . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))
 
 parseJoinExp :: Parser a -> Parser ([JOIN_EXP], a)
-parseJoinExp nxt = joins <|> fmap ([], ) (whitespace *> nxt)
+parseJoinExp = run
   where
     join psr res = psr *>| anyCaseString "JOIN" $> res <* whitespace
-    joins = do
-      joinType <-
-        join (anyCaseString "INNER" <|> pure ()) INNER <|>
-        join (anyCaseString "LEFT" *>| (anyCaseString "OUTER" <|> pure ())) LEFT <|>
-        join (anyCaseString "RIGHT" *>| (anyCaseString "OUTER" <|> pure ())) RIGHT <|>
-        join (anyCaseString "FULL" *>| (anyCaseString "OUTER" <|> pure ())) FULL
-      select <- parseSubExp parseSelectExp
-      rest <- anyUntilThat (whitespace *> nxt)
-      return $ liftA2 (,) ((: []) . flip (JOIN joinType select) [] . BS.pack . fst) snd rest
+    run nxt =
+      do joinType <-
+           join (anyCaseString "INNER" <|> pure ()) INNER <|>
+           join (anyCaseString "LEFT" *>| (anyCaseString "OUTER" <|> pure ())) LEFT <|>
+           join (anyCaseString "RIGHT" *>| (anyCaseString "OUTER" <|> pure ())) RIGHT <|>
+           join (anyCaseString "FULL" *>| (anyCaseString "OUTER" <|> pure ())) FULL
+         select <- parseSubExp parseSelectExp
+         fmap
+           (liftA2
+              (,)
+              (liftA2
+                 (:)
+                 (liftA2 (JOIN joinType select) (BS.pack . fst) (fst . snd))
+                 (fst . snd . snd))
+              (snd . snd . snd))
+           (whitespace *> anyUntilThat (whitespace *> parseOnExp (run nxt)))
+         -- rest <- whitespace *> anyUntilThat (whitespace *> parseOnExp (run nxt))
+         -- return
+         --   ( (:)
+         --       (JOIN joinType select (BS.pack . fst $ rest) (fst . snd $ rest))
+         --       (fst . snd . snd $ rest)
+         --   , snd . snd . snd $ rest)
+     <|> fmap ([], ) (whitespace *> nxt)
 
-parseWhereExp :: Parser a -> Parser (Maybe WHERE_EXP, a)
-parseWhereExp nxt =
-  (anyCaseString "WHERE" *>|
-   fmap (liftA2 (,) (Just . WHERE . BS.pack . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
-  fmap (Nothing, ) (whitespace *> nxt)
-
-parseWhereExp' :: Parser a -> Parser ([WHERE_EXP], a)
-parseWhereExp' = run "WHERE" WHERE
+parseWhereExp :: Parser a -> Parser ([WHERE_EXP], a)
+parseWhereExp = run "WHERE" WHERE
   where
     run :: ByteString -> (ByteString -> WHERE_EXP) -> Parser a -> Parser ([WHERE_EXP], a)
     run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)

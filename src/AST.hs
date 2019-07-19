@@ -35,7 +35,7 @@ data WHENTHEN =
 type ELSE = EQUATION
 
 data EQUATION
-  = Val ByteString
+  = VAL ByteString
   | EQ EQUATION
        EQUATION
   | PLUS EQUATION

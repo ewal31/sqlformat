@@ -1,7 +1,6 @@
-{-# LANGUAGE OverloadedStrings, TupleSections, AllowAmbiguousTypes,
-  TypeFamilies, FlexibleInstances, RankNTypes, UndecidableInstances,
-  IncoherentInstances, NoMonomorphismRestriction,
-  FunctionalDependencies, FlexibleContexts #-}
+{-# LANGUAGE AllowAmbiguousTypes, TypeFamilies, FlexibleInstances,
+  UndecidableInstances, IncoherentInstances, FunctionalDependencies
+  #-}
 
 module Tuple where
 

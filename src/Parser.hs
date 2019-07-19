@@ -255,11 +255,7 @@ parseLimitExp nxt =
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseSubExp :: (forall a. Parser a -> Parser (b, a)) -> Parser (Maybe b)
-parseSubExp f = fmap (Just . fst) subExp <|> pure Nothing
-  where
-    subExp = do
-      string "(" *> whitespace
-      f $ whitespace *> string ")" <* whitespace
+parseSubExp f = fmap Just (parseSubExp' f) <|> pure Nothing
 
 parseSubExp' :: (forall a. Parser a -> Parser (b, a)) -> Parser b
 parseSubExp' f = string "(" *> whitespace *> fmap fst (f $ whitespace *> string ")" <* whitespace)

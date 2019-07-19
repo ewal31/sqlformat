@@ -424,6 +424,25 @@ testParseSubExp =
          Nothing
          Nothing) ~=?
     BP.parseOnly (P.parseSubExp P.parseSelectExp) "( SELECT * FROM test )"
+  , "( SELECT B )" ~: Right (P.COLUMNS Nothing [P.COLUMN "B" Nothing]) ~=?
+    BP.parseOnly (P.parseSubExp' P.parseColumnsExp) "( SELECT B )"
+  , "( SELECT B ) something else" ~: Right (P.COLUMNS Nothing [P.COLUMN "B" Nothing]) ~=?
+    BP.parseOnly (P.parseSubExp' P.parseColumnsExp) "( SELECT B ) something else"
+  , "something else" ~: Left "string" ~=?
+    BP.parseOnly (P.parseSubExp' P.parseColumnsExp) "something else"
+  , "( SELECT * FROM test )" ~:
+    Right
+      (P.SELECT
+         []
+         (P.COLUMNS Nothing [P.COLUMN "*" Nothing])
+         (P.FROM Nothing "test")
+         []
+         []
+         Nothing
+         Nothing
+         Nothing
+         Nothing) ~=?
+    BP.parseOnly (P.parseSubExp' P.parseSelectExp) "( SELECT * FROM test )"
   ]
 
 testParseOnExp =

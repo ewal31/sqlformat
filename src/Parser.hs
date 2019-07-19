@@ -182,9 +182,10 @@ parseWithExp nxt = (anyCaseString "WITH" *>| run nxt) <|> fmap ([], ) nxt
   where
     run nxt = do
       name <- BS.pack . fst <$> anyUntilThat (whitespace *> anyCaseString "AS")
-      exp <- whitespace *> parseSubExp parseSelectExp
-      rest <- whitespace *> (string "," *>| run nxt) <|> fmap ([], ) nxt
-      return (WITH name (fromJust exp) : fst rest, snd rest)
+      exp <- whitespace *> parseSubExp' parseSelectExp
+      fmap
+        (liftA2 (,) (liftA2 (:) (pure $ WITH name exp) fst) snd)
+        (whitespace *> (string "," *>| run nxt) <|> fmap ([], ) nxt)
 
 parseColumnsExp :: Parser a -> Parser (COLUMNS_EXP, a)
 parseColumnsExp nxt = do
@@ -259,6 +260,9 @@ parseSubExp f = fmap (Just . fst) subExp <|> pure Nothing
     subExp = do
       string "(" *> whitespace
       f $ whitespace *> string ")" <* whitespace
+
+parseSubExp' :: (forall a. Parser a -> Parser (b, a)) -> Parser b
+parseSubExp' f = string "(" *> whitespace *> fmap fst (f $ whitespace *> string ")" <* whitespace)
 
 parseOnExp :: Parser a -> Parser ([ON_EXP], a)
 parseOnExp = run "ON" ON

@@ -11,6 +11,7 @@ import qualified Data.ByteString as BS
        (concat, foldr, head, map, pack, readFile, tail)
 import Data.ByteString (ByteString)
 import Data.Functor (($>))
+import Data.Maybe (fromJust)
 import Data.Word (Word8)
 
 type family TupleFn ty out where
@@ -43,6 +44,8 @@ type TableName = ByteString
 
 type ColumnName = ByteString
 
+type FunctionName = ByteString
+
 type Alias = ByteString
 
 data SELECT_MOD
@@ -60,6 +63,54 @@ data JOINTYPE
 data COLUMN_EXP =
   COLUMN ColumnName
          (Maybe Alias)
+  deriving (Eq, Show)
+
+data WHENTHEN =
+  WHENTHEN EQUATION
+           EQUATION
+  deriving (Eq, Show)
+
+type ELSE = EQUATION
+
+data EQUATION
+  = Val ByteString
+  | EQ EQUATION
+       EQUATION
+  | PLUS EQUATION
+         EQUATION
+  | MINUS EQUATION
+          EQUATION
+  | DIV EQUATION
+        EQUATION
+  | TIMES EQUATION
+          EQUATION
+  | FUNC FunctionName
+         [EQUATION]
+  | AND EQUATION
+        EQUATION
+  | OR EQUATION
+       EQUATION
+  | NOT EQUATION
+  | IS EQUATION
+       EQUATION
+  | LESS EQUATION
+         EQUATION
+  | GREAT EQUATION
+          EQUATION
+  | NEQ EQUATION
+        EQUATION
+  | LESSEQ EQUATION
+           EQUATION
+  | GREATEQ EQUATION
+            EQUATION
+  | CASE (Maybe EQUATION)
+         [WHENTHEN]
+         (Maybe ELSE)
+  deriving (Eq, Show)
+
+data WITH_EXP =
+  WITH Alias
+       SELECT_EXP
   deriving (Eq, Show)
 
 data COLUMNS_EXP =
@@ -106,7 +157,8 @@ newtype LIMIT_EXP =
   deriving (Eq, Show)
 
 data SELECT_EXP =
-  SELECT COLUMNS_EXP
+  SELECT [WITH_EXP]
+         COLUMNS_EXP
          FROM_EXP
          [JOIN_EXP]
          [WHERE_EXP]
@@ -119,10 +171,20 @@ data SELECT_EXP =
 parseSelectExp :: Parser a -> Parser (SELECT_EXP, a)
 parseSelectExp nxt =
   fmap (`applyFnToTuple` ((,) ... SELECT)) $
+  parseWithExp $
   parseColumnsExp $
   parseFromExp $
   parseJoinExp $
   parseWhereExp $ parseGroupByExp $ parseHavingExp $ parseOrderByExp $ parseLimitExp $ finally nxt
+
+parseWithExp :: Parser a -> Parser ([WITH_EXP], a)
+parseWithExp nxt = (anyCaseString "WITH" *>| run nxt) <|> fmap ([], ) nxt
+  where
+    run nxt = do
+      name <- BS.pack . fst <$> anyUntilThat (whitespace *> anyCaseString "AS")
+      exp <- whitespace *> parseSubExp parseSelectExp
+      rest <- whitespace *> (string "," *>| run nxt) <|> fmap ([], ) nxt
+      return (WITH name (fromJust exp) : fst rest, snd rest)
 
 parseColumnsExp :: Parser a -> Parser (COLUMNS_EXP, a)
 parseColumnsExp nxt = do

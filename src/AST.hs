@@ -1,6 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module AST where
 
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (unpack)
 
 type TableName = ByteString
 
@@ -36,18 +39,16 @@ type ELSE = EQUATION
 
 data EQUATION
   = VAL ByteString
-  | EQ EQUATION
-       EQUATION
+  | EQU EQUATION
+        EQUATION
   | PLUS EQUATION
          EQUATION
   | MINUS EQUATION
           EQUATION
-  | DIV EQUATION
-        EQUATION
   | TIMES EQUATION
           EQUATION
-  | FUNC FunctionName
-         [EQUATION]
+  | DIV EQUATION
+        EQUATION
   | AND EQUATION
         EQUATION
   | OR EQUATION
@@ -65,11 +66,21 @@ data EQUATION
            EQUATION
   | GREATEQ EQUATION
             EQUATION
+  | FUNC FunctionName
+         [EQUATION]
   | CASE (Maybe EQUATION)
          [WHENTHEN]
          (Maybe ELSE)
+  | SUB SELECT_EXP
   deriving (Eq, Show)
 
+-- instance Show EQUATION where
+--   show (VAL s) = unpack s
+--   show (EQU x y) = concat [show x, " = ", show y]
+--   show (PLUS x y) = concat [show x, " + ", show y]
+--   show (MINUS x y) = concat [show x, " - ", show y]
+--   show (DIV x y) = concat [show x, " / ", show y]
+--   show (TIMES x y) = concat [show x, " * ", show y]
 data WITH_EXP =
   WITH Alias
        SELECT_EXP

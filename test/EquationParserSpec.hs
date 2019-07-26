@@ -42,7 +42,7 @@ testParseCase =
           [A.WHENTHEN (A.VAL "1") (A.VAL "'one'"), A.WHENTHEN (A.VAL "2") (A.VAL "'two'")]
           Nothing
       , ()) ~=?
-    BP.parseOnly (P.parseCase BP.endOfInput) "x WHEN 1 THEN 'one' WHEN 2 THEN 'two' END"
+    BP.parseOnly (P.parseCase BP.endOfInput) "CASE x WHEN 1 THEN 'one' WHEN 2 THEN 'two' END"
   , "CASE x WHEN 1 = a THEN 'one' END" ~:
     Right
       ( A.CASE
@@ -50,7 +50,7 @@ testParseCase =
           [A.WHENTHEN (A.EQU (A.VAL "1") (A.VAL "a")) (A.VAL "'one'")]
           Nothing
       , ()) ~=?
-    BP.parseOnly (P.parseCase BP.endOfInput) "x WHEN 1 = a THEN 'one' END"
+    BP.parseOnly (P.parseCase BP.endOfInput) "CASE x WHEN 1 = a THEN 'one' END"
   , "CASE x WHEN 1 = a THEN 'one' WHEN 2 = b THEN 'two' END" ~:
     Right
       ( A.CASE
@@ -60,7 +60,9 @@ testParseCase =
           ]
           Nothing
       , ()) ~=?
-    BP.parseOnly (P.parseCase BP.endOfInput) "x WHEN 1 = a THEN 'one' WHEN 2 = b THEN 'two' END"
+    BP.parseOnly
+      (P.parseCase BP.endOfInput)
+      "CASE x WHEN 1 = a THEN 'one' WHEN 2 = b THEN 'two' END"
   , "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END" ~:
     Right
       ( A.CASE
@@ -70,7 +72,7 @@ testParseCase =
           ]
           Nothing
       , ()) ~=?
-    BP.parseOnly (P.parseCase BP.endOfInput) "WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END"
+    BP.parseOnly (P.parseCase BP.endOfInput) "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END"
   ]
 
 testParseEquation =

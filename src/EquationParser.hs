@@ -26,12 +26,7 @@ parseEquation nxt = do
     run :: Parser ([(EQUATION, PrecendenceParser)], (EQUATION, a))
     run = do
       arg <-
-        (whitespace *>
-         string "(" *>|
-         (fmap Left (parseBrackets nxt) <|> fmap Right (parseBrackets parseBoolSymbol))) <|>
-        (whitespace *>
-         anyCaseString "CASE" *>|
-         (fmap Left (parseCase nxt) <|> fmap Right (parseCase parseBoolSymbol))) <|>
+        brackets <|> case' <|>
         (handler =<<
          anyUntilThat
            (fmap Next (whitespace *> nxt <* whitespace) <|> ((string "(" <* whitespace) $> Func) <|>
@@ -40,18 +35,28 @@ parseEquation nxt = do
     handler :: (ByteString, Return a) -> Parser (Either (EQUATION, a) (EQUATION, PrecendenceParser))
     handler (bs, Next nxt) = pure $ Left (VAL bs, nxt)
     handler (bs, Bool pp) = pure $ Right (VAL bs, pp)
-    handler (bs, Func) =
-      fmap Left (parseFunction bs nxt) <|> fmap Right (parseFunction bs parseBoolSymbol)
+    handler (bs, Func) = func' bs
+    brackets = either' parseBrackets nxt parseBoolSymbol
+    case' = either' parseCase nxt parseBoolSymbol
+    func' :: ByteString -> Parser (Either (EQUATION, a) (EQUATION, PrecendenceParser))
+    func' bs = either' (parseFunction bs) nxt parseBoolSymbol
+
+either' ::
+     (forall a. Parser a -> Parser (b, a)) -> Parser c -> Parser d -> Parser (Either (b, c) (b, d))
+either' psr a b = fmap Left (psr a) <|> fmap Right (psr b)
 
 -- TODO make a type to wrap this in 
 parseBrackets :: Parser a -> Parser (EQUATION, a)
 parseBrackets nxt = do
+  whitespace *> string "(" <* whitespace
   exp <- fst <$> parseEquation (string ")")
   n <- whitespace *> nxt
   pure (exp, n)
 
 parseFunction :: ByteString -> Parser a -> Parser (EQUATION, a)
-parseFunction name nxt = do
+parseFunction name nxt
+  -- string "(" <* whitespace
+ = do
   args <- parseArgs
   n <- whitespace *> nxt
   pure (FUNC name args, n)
@@ -64,6 +69,7 @@ parseFunction name nxt = do
 -- TODO else
 parseCase :: Parser a -> Parser (EQUATION, a)
 parseCase nxt = do
+  whitespace *> anyCaseString "CASE" <* whitespace
   init <- (word "WHEN" $> Nothing) <|> (Just <$> eq "WHEN")
   cs <- uncurry (CASE init) <$> parseStmts
   (cs, ) <$> nxt

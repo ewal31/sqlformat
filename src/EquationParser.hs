@@ -7,32 +7,53 @@ import AST (ELSE, EQUATION(..), WHENTHEN(..))
 import Control.Applicative ((<|>), liftA2)
 import Data.Attoparsec.ByteString as BP (Parser, many', string)
 import Data.ByteString (ByteString)
+import Data.Either (either)
 import Data.Functor (($>))
 import Data.Maybe (fromJust)
 import Data.Stack
 import Parser
 
-parseSymbol :: forall a. Parser a -> Parser (EQUATION, a)
-parseSymbol nxt =
-  (whitespace *> anyCaseString "CASE" *>| parseCase nxt) <|>
-  (handler =<<
-   anyUntilThat (fmap Left (string "(") <|> fmap Right (whitespace *> nxt <* whitespace)))
-  where
-    handler :: (ByteString, Either ByteString a) -> Parser (EQUATION, a)
-    handler (bs, Left _) = parseFunction bs nxt
-    handler (bs, Right nxt) = pure (VAL bs, nxt)
+data Return a
+  = Next a
+  | Bool PrecendenceParser
+  | Func
 
-parseBoolSymbol :: Parser PrecendenceParser
-parseBoolSymbol =
-  (string "=" $> PParser 0 EQU) <|> (string "+" $> PParser 1 PLUS) <|>
-  (string "-" $> PParser 1 MINUS) <|>
-  (string "*" $> PParser 2 TIMES) <|>
-  (string "/" $> PParser 2 DIV)
+parseEquation :: forall a. Parser a -> Parser (EQUATION, a)
+parseEquation nxt = do
+  result@(lst, (end, n)) <- run
+  pure (reduce end lst, n)
+  where
+    run :: Parser ([(EQUATION, PrecendenceParser)], (EQUATION, a))
+    run = do
+      arg <-
+        (whitespace *>
+         string "(" *>|
+         (fmap Left (parseBrackets nxt) <|> fmap Right (parseBrackets parseBoolSymbol))) <|>
+        (whitespace *>
+         anyCaseString "CASE" *>|
+         (fmap Left (parseCase nxt) <|> fmap Right (parseCase parseBoolSymbol))) <|>
+        (handler =<<
+         anyUntilThat
+           (fmap Next (whitespace *> nxt <* whitespace) <|> ((string "(" <* whitespace) $> Func) <|>
+            fmap Bool (whitespace *> parseBoolSymbol <* whitespace)))
+      either (return . ([], )) (\a -> fmap (liftA2 (,) ((:) a . fst) snd) run) arg
+    handler :: (ByteString, Return a) -> Parser (Either (EQUATION, a) (EQUATION, PrecendenceParser))
+    handler (bs, Next nxt) = pure $ Left (VAL bs, nxt)
+    handler (bs, Bool pp) = pure $ Right (VAL bs, pp)
+    handler (bs, Func) =
+      fmap Left (parseFunction bs nxt) <|> fmap Right (parseFunction bs parseBoolSymbol)
+
+-- TODO make a type to wrap this in 
+parseBrackets :: Parser a -> Parser (EQUATION, a)
+parseBrackets nxt = do
+  exp <- fst <$> parseEquation (string ")")
+  n <- whitespace *> nxt
+  pure (exp, n)
 
 parseFunction :: ByteString -> Parser a -> Parser (EQUATION, a)
 parseFunction name nxt = do
   args <- parseArgs
-  n <- nxt
+  n <- whitespace *> nxt
   pure (FUNC name args, n)
   where
     parseArgs =
@@ -40,19 +61,10 @@ parseFunction name nxt = do
          fmap ((:) arg) parseArgs
      <|> pure . fst <$> parseEquation (string ")")
 
---   | CASE (Maybe EQUATION)
---          [WHENTHEN]
---          (Maybe ELSE)
--- data WHENTHEN =
---
---   WHENTHEN EQUATION
---            EQUATION
---   deriving (Eq, Show)
--- 
--- type ELSE = EQUATION
+-- TODO else
 parseCase :: Parser a -> Parser (EQUATION, a)
 parseCase nxt = do
-  init <- Just <$> eq "WHEN" <|> (word "WHEN" $> Nothing)
+  init <- (word "WHEN" $> Nothing) <|> (Just <$> eq "WHEN")
   cs <- uncurry (CASE init) <$> parseStmts
   (cs, ) <$> nxt
   where
@@ -68,13 +80,12 @@ parseCase nxt = do
     word w = whitespace *> anyCaseString w <* whitespace
     eq w = fst <$> (parseEquation . word) w
 
-parseEquation :: Parser a -> Parser (EQUATION, a)
-parseEquation nxt = run
-  where
-    run = do
-      eqs <- BP.many' $ parseSymbol parseBoolSymbol
-      rest <- parseSymbol nxt
-      pure (reduce (fst rest) eqs, snd rest)
+parseBoolSymbol :: Parser PrecendenceParser
+parseBoolSymbol =
+  (string "=" $> PParser 0 EQU) <|> (string "+" $> PParser 1 PLUS) <|>
+  (string "-" $> PParser 1 MINUS) <|>
+  (string "*" $> PParser 2 TIMES) <|>
+  (string "/" $> PParser 2 DIV)
 
 data PrecendenceParser = PParser
   { prec :: Int

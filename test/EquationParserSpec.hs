@@ -115,4 +115,32 @@ testParseEquation =
     BP.parseOnly (P.parseEquation BP.endOfInput) "a = MAX(a * b)"
   , "MAX(id)" ~: Right (A.FUNC "MAX" [A.VAL "id"], ()) ~=?
     BP.parseOnly (P.parseEquation BP.endOfInput) "MAX(id)"
+  , "CASE x WHEN 1 THEN 'one' WHEN 2 THEN 'two' END" ~:
+    Right
+      ( A.CASE
+          (Just (A.VAL "x"))
+          [A.WHENTHEN (A.VAL "1") (A.VAL "'one'"), A.WHENTHEN (A.VAL "2") (A.VAL "'two'")]
+          Nothing
+      , ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "CASE x WHEN 1 THEN 'one' WHEN 2 THEN 'two' END"
+  , "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END" ~:
+    Right
+      ( A.CASE
+          Nothing
+          [ A.WHENTHEN (A.EQU (A.VAL "x") (A.VAL "1")) (A.VAL "'one'")
+          , A.WHENTHEN (A.EQU (A.VAL "x") (A.VAL "2")) (A.VAL "'two'")
+          ]
+          Nothing
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseEquation BP.endOfInput)
+      "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END"
+  , "(a + 2) * 1 = 1" ~:
+    Right (A.EQU (A.TIMES (A.PLUS (A.VAL "a") (A.VAL "2")) (A.VAL " 1")) (A.VAL "1"), ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "(a + 2) * 1 = 1"
+  , "SUM((a + 2) * 1) = 1" ~:
+    Right
+      ( A.EQU (A.FUNC "SUM" [A.TIMES (A.PLUS (A.VAL "a") (A.VAL "2")) (A.VAL " 1")]) (A.VAL " 1")
+      , ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "SUM((a + 2) * 1) = 1"
   ]

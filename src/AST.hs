@@ -75,13 +75,6 @@ data EQUATION
   | SUB SELECT_EXP
   deriving (Eq, Show)
 
--- instance Show EQUATION where
---   show (VAL s) = unpack s
---   show (EQU x y) = concat [show x, " = ", show y]
---   show (PLUS x y) = concat [show x, " + ", show y]
---   show (MINUS x y) = concat [show x, " - ", show y]
---   show (DIV x y) = concat [show x, " / ", show y]
---   show (TIMES x y) = concat [show x, " * ", show y]
 data WITH_EXP =
   WITH Alias
        SELECT_EXP

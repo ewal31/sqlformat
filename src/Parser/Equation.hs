@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings, ExistentialQuantification,
-  ScopedTypeVariables, RankNTypes, TupleSections #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, TupleSections
+  #-}
 
 module Parser.Equation where
 
@@ -9,13 +9,14 @@ import Data.Attoparsec.ByteString as BP (Parser, many', string)
 import Data.ByteString (ByteString)
 import Data.Either (either)
 import Data.Functor (($>))
-import Data.Maybe (fromJust, maybe)
-import Data.Stack
+import Data.Maybe (maybe)
 import Parser.Util
+
+type BinomOp = PrecedenceOperator EQUATION
 
 data Return a
   = Next a
-  | Bool PrecendenceParser
+  | Bool BinomOp
   | Func
 
 parseEquation :: forall a. Parser a -> Parser (EQUATION, a)
@@ -23,7 +24,7 @@ parseEquation nxt = do
   result@(lst, (end, n)) <- run
   pure (reduce end lst, n)
   where
-    run :: Parser ([(EQUATION, PrecendenceParser)], (EQUATION, a))
+    run :: Parser ([(EQUATION, BinomOp)], (EQUATION, a))
     run = do
       arg <-
         brackets' <|> case' <|>
@@ -33,7 +34,7 @@ parseEquation nxt = do
             ((whitespace *> string "(" <* whitespace) $> Func) <|>
             fmap Bool (whitespace *> parseBoolSymbol <* whitespace)))
       either (return . ([], )) (\a -> fmap (liftA2 (,) ((:) a . fst) snd) run) arg
-    handler :: (ByteString, Return a) -> Parser (Either (EQUATION, a) (EQUATION, PrecendenceParser))
+    handler :: (ByteString, Return a) -> Parser (Either (EQUATION, a) (EQUATION, BinomOp))
     handler (bs, Next nxt) = pure $ Left (VAL bs, nxt)
     handler (bs, Bool pp) = pure $ Right (VAL bs, pp)
     handler (bs, Func) = func' bs
@@ -41,10 +42,7 @@ parseEquation nxt = do
     case' = either' parseCase nxt parseBoolSymbol
     func' bs = either' (parseFunction bs) nxt parseBoolSymbol
 
-either' ::
-     (forall a. Parser a -> Parser (b, a)) -> Parser c -> Parser d -> Parser (Either (b, c) (b, d))
-either' psr a b = fmap Left (psr a) <|> fmap Right (psr b)
-
+-- imprecidative 
 -- newtype F = F
 --   { u :: forall a. Parser a -> Parser a
 --   }
@@ -70,7 +68,6 @@ parseFunction name nxt = do
          fmap ((:) arg) parseArgs
      <|> pure . fst <$> parseEquation (string ")")
 
--- TODO else
 parseCase :: Parser a -> Parser (EQUATION, a)
 parseCase nxt = do
   whitespace *> anyCaseString "CASE" <* whitespace
@@ -94,55 +91,17 @@ parseCase nxt = do
 -- Missing unary operators still
 -- '-'
 -- 'NOT'
-parseBoolSymbol :: Parser PrecendenceParser
+parseBoolSymbol :: Parser BinomOp
 parseBoolSymbol =
-  (string "<>" $> PParser 2 NEQ) <|> (string "!=" $> PParser 2 NEQ) <|>
-  (anyCaseString "AND" $> PParser 0 AND) <|>
-  (anyCaseString "OR" $> PParser 0 OR) <|>
-  (anyCaseString "IS" $> PParser 2 IS) <|>
-  (string "<=" $> PParser 2 LESSEQ) <|>
-  (string ">=" $> PParser 2 GREATEQ) <|>
-  (string "<" $> PParser 2 LESS) <|>
-  (string ">" $> PParser 2 GREAT) <|>
-  (string "=" $> PParser 2 EQU) <|>
-  (string "+" $> PParser 4 PLUS) <|>
-  (string "-" $> PParser 4 MINUS) <|>
-  (string "*" $> PParser 6 TIMES) <|>
-  (string "/" $> PParser 6 DIV)
-
-data PrecendenceParser = PParser
-  { prec :: Int
-  , psr :: EQUATION -> EQUATION -> EQUATION
-  }
-
-reduce :: EQUATION -> [(EQUATION, PrecendenceParser)] -> EQUATION
-reduce end = run stackNew
-  where
-    comb (xe, xpp) (ye, ypp) = (psr xpp xe ye, ypp)
-    run :: Stack (EQUATION, PrecendenceParser) -> [(EQUATION, PrecendenceParser)] -> EQUATION
-    run _ [] = end
-    run stk [x@(xe, xpp)] =
-      case stackIsEmpty stk of
-        True -> psr xpp xe end
-        False ->
-          if prec spp >= prec xpp
-            then run stk' [comb s x]
-            else unravel stk (psr xpp xe end)
-          where top@(stk', s@(se, spp)) = fromJust . stackPop $ stk
-    run stk (x@(xe, xpp):y@(ye, ypp):zs) =
-      case stackIsEmpty stk of
-        True ->
-          if prec xpp >= prec ypp
-            then run stk (comb x y : zs)
-            else run (stackPush stk x) (y : zs)
-        False ->
-          if prec xpp >= prec ypp
-            then run stk' (s : comb x y : zs)
-            else run (stackPush stk x) (y : zs)
-          where top@(stk', s) = fromJust . stackPop $ stk
-    unravel :: Stack (EQUATION, PrecendenceParser) -> EQUATION -> EQUATION
-    unravel stk el =
-      case stackIsEmpty stk of
-        True -> el
-        False -> unravel (fst top) (psr (snd . snd $ top) (fst . snd $ top) el)
-          where top = fromJust . stackPop $ stk
+  (string "<>" $> POP 2 NEQ) <|> (string "!=" $> POP 2 NEQ) <|> (anyCaseString "AND" $> POP 0 AND) <|>
+  (anyCaseString "OR" $> POP 0 OR) <|>
+  (anyCaseString "IS" $> POP 2 IS) <|>
+  (string "<=" $> POP 2 LESSEQ) <|>
+  (string ">=" $> POP 2 GREATEQ) <|>
+  (string "<" $> POP 2 LESS) <|>
+  (string ">" $> POP 2 GREAT) <|>
+  (string "=" $> POP 2 EQU) <|>
+  (string "+" $> POP 4 PLUS) <|>
+  (string "-" $> POP 4 MINUS) <|>
+  (string "*" $> POP 6 TIMES) <|>
+  (string "/" $> POP 6 DIV)

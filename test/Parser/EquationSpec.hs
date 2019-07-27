@@ -4,7 +4,7 @@ module Parser.EquationSpec
   ( tests
   ) where
 
-import qualified AST as A (ELSE, EQUATION(..), WHENTHEN(..))
+import qualified AST.Equation as A
 import qualified Data.Attoparsec.ByteString as BP
        (endOfInput, parseOnly, takeByteString, word8)
 import Data.ByteString (ByteString)

@@ -1,15 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
+module AST.SQL where
 
-module AST where
-
+import AST.Equation (EQUATION)
 import Data.ByteString (ByteString)
-import Data.ByteString.Char8 (unpack)
 
 type TableName = ByteString
 
 type ColumnName = ByteString
-
-type FunctionName = ByteString
 
 type Alias = ByteString
 
@@ -28,51 +24,6 @@ data JOINTYPE
 data COLUMN_EXP =
   COLUMN ColumnName
          (Maybe Alias)
-  deriving (Eq, Show)
-
-data WHENTHEN =
-  WHENTHEN EQUATION
-           EQUATION
-  deriving (Eq, Show)
-
-type ELSE = EQUATION
-
-data EQUATION
-  = VAL ByteString
-  | EQU EQUATION -- '='
-        EQUATION
-  | PLUS EQUATION -- '+'
-         EQUATION
-  | MINUS EQUATION -- '-'
-          EQUATION
-  | TIMES EQUATION -- '*'
-          EQUATION
-  | DIV EQUATION -- '/'
-        EQUATION
-  | BRACKETS EQUATION -- '(' ')'
-  | AND EQUATION -- 'AND'
-        EQUATION
-  | OR EQUATION -- 'OR'
-       EQUATION
-  | NOT EQUATION -- 'NOT'
-  | IS EQUATION -- 'IS'
-       EQUATION
-  | LESS EQUATION -- '<'
-         EQUATION
-  | GREAT EQUATION -- '>'
-          EQUATION
-  | NEQ EQUATION -- '<>' '!='
-        EQUATION
-  | LESSEQ EQUATION -- '<='
-           EQUATION
-  | GREATEQ EQUATION -- '>='
-            EQUATION
-  | FUNC FunctionName
-         [EQUATION]
-  | CASE (Maybe EQUATION)
-         [WHENTHEN]
-         (Maybe ELSE)
-  | SUB SELECT_EXP
   deriving (Eq, Show)
 
 data WITH_EXP =

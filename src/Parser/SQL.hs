@@ -2,7 +2,7 @@
 
 module Parser.SQL where
 
-import AST
+import AST.SQL
 import Control.Applicative (Alternative, (<|>), liftA, liftA2)
 import Data.Attoparsec.ByteString as BP
 import qualified Data.ByteString as BS

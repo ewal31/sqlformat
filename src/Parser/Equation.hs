@@ -3,7 +3,7 @@
 
 module Parser.Equation where
 
-import AST (ELSE, EQUATION(..), WHENTHEN(..))
+import AST.Equation
 import Control.Applicative ((<|>), liftA2)
 import Data.Attoparsec.ByteString as BP (Parser, many', string)
 import Data.ByteString (ByteString)

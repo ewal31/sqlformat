@@ -39,33 +39,33 @@ type ELSE = EQUATION
 
 data EQUATION
   = VAL ByteString
-  | EQU EQUATION
+  | EQU EQUATION -- '='
         EQUATION
-  | PLUS EQUATION
+  | PLUS EQUATION -- '+'
          EQUATION
-  | MINUS EQUATION
+  | MINUS EQUATION -- '-'
           EQUATION
-  | TIMES EQUATION
+  | TIMES EQUATION -- '*'
           EQUATION
-  | DIV EQUATION
+  | DIV EQUATION -- '/'
         EQUATION
-  | BRACKETS EQUATION
-  | AND EQUATION
+  | BRACKETS EQUATION -- '(' ')'
+  | AND EQUATION -- 'AND'
         EQUATION
-  | OR EQUATION
+  | OR EQUATION -- 'OR'
        EQUATION
-  | NOT EQUATION
-  | IS EQUATION
+  | NOT EQUATION -- 'NOT'
+  | IS EQUATION -- 'IS'
        EQUATION
-  | LESS EQUATION
+  | LESS EQUATION -- '<'
          EQUATION
-  | GREAT EQUATION
+  | GREAT EQUATION -- '>'
           EQUATION
-  | NEQ EQUATION
+  | NEQ EQUATION -- '<>' '!='
         EQUATION
-  | LESSEQ EQUATION
+  | LESSEQ EQUATION -- '<='
            EQUATION
-  | GREATEQ EQUATION
+  | GREATEQ EQUATION -- '>='
             EQUATION
   | FUNC FunctionName
          [EQUATION]

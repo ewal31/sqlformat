@@ -43,6 +43,16 @@ testParseCase =
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseCase BP.endOfInput) "CASE x WHEN 1 THEN 'one' WHEN 2 THEN 'two' END"
+  , "CASE x WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'unknown' END" ~:
+    Right
+      ( A.CASE
+          (Just (A.VAL "x"))
+          [A.WHENTHEN (A.VAL "1") (A.VAL "'one'"), A.WHENTHEN (A.VAL "2") (A.VAL "'two'")]
+          (Just $ A.VAL "'unknown'")
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseCase BP.endOfInput)
+      "CASE x WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'unknown' END"
   , "CASE x WHEN 1 = a THEN 'one' END" ~:
     Right
       ( A.CASE
@@ -73,6 +83,18 @@ testParseCase =
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseCase BP.endOfInput) "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END"
+  , "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' ELSE 2 * a END" ~:
+    Right
+      ( A.CASE
+          Nothing
+          [ A.WHENTHEN (A.EQU (A.VAL "x") (A.VAL "1")) (A.VAL "'one'")
+          , A.WHENTHEN (A.EQU (A.VAL "x") (A.VAL "2")) (A.VAL "'two'")
+          ]
+          (Just $ A.TIMES (A.VAL "2") (A.VAL "a"))
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseCase BP.endOfInput)
+      "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' ELSE 2 * a END"
   ]
 
 testParseEquation =
@@ -137,6 +159,18 @@ testParseEquation =
     BP.parseOnly
       (P.parseEquation BP.endOfInput)
       "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END"
+  , "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' ELSE 2 * a END" ~:
+    Right
+      ( A.CASE
+          Nothing
+          [ A.WHENTHEN (A.EQU (A.VAL "x") (A.VAL "1")) (A.VAL "'one'")
+          , A.WHENTHEN (A.EQU (A.VAL "x") (A.VAL "2")) (A.VAL "'two'")
+          ]
+          (Just $ A.TIMES (A.VAL "2") (A.VAL "a"))
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseEquation BP.endOfInput)
+      "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' ELSE 2 * a END"
   , "(a + 2) * 1 = 1" ~:
     Right
       (A.EQU (A.TIMES (A.BRACKETS (A.PLUS (A.VAL "a") (A.VAL "2"))) (A.VAL " 1")) (A.VAL "1"), ()) ~=?
@@ -148,4 +182,17 @@ testParseEquation =
           (A.VAL " 1")
       , ()) ~=?
     BP.parseOnly (P.parseEquation BP.endOfInput) "SUM((a + 2) * 1) = 1"
+  , "a < 2 AND b >= 4" ~:
+    Right (A.AND (A.LESS (A.VAL "a") (A.VAL "2")) (A.GREATEQ (A.VAL "b") (A.VAL "4")), ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "a < 2 AND b >= 4"
+  , "a <> 2 OR b IS NULL" ~:
+    Right (A.OR (A.NEQ (A.VAL "a") (A.VAL "2")) (A.IS (A.VAL "b") (A.VAL "NULL")), ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "a <> 2 OR b IS NULL"
+  , "a * 1 <> 2 + 3 AND b != (3 * a)" ~:
+    Right
+      ( A.AND
+          (A.NEQ (A.TIMES (A.VAL "a") (A.VAL "1")) (A.PLUS (A.VAL "2") (A.VAL "3")))
+          (A.NEQ (A.VAL "b") (A.BRACKETS (A.TIMES (A.VAL "3") (A.VAL "a"))))
+      , ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "a * 1 <> 2 + 3 AND b != (3 * a)"
   ]

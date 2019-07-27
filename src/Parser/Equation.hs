@@ -9,7 +9,7 @@ import Data.Attoparsec.ByteString as BP (Parser, many', string)
 import Data.ByteString (ByteString)
 import Data.Either (either)
 import Data.Functor (($>))
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, maybe)
 import Data.Stack
 import Parser.Util
 
@@ -85,17 +85,30 @@ parseCase nxt = do
          fmap (liftA2 (,) ((:) (WHENTHEN a b) . fst) snd) parseStmts
      <|> do
         a <- eq "THEN"
-        b <- eq "END"
-        return ([WHENTHEN a b], Nothing)
+        b <- fmap Just (eq "ELSE") <|> pure Nothing
+        c <- eq "END"
+        maybe (return ([WHENTHEN a c], Nothing)) (\b -> return ([WHENTHEN a b], Just c)) b
     word w = whitespace *> anyCaseString w <* whitespace
     eq w = fst <$> (parseEquation . word) w
 
+-- Missing unary operators still
+-- '-'
+-- 'NOT'
 parseBoolSymbol :: Parser PrecendenceParser
 parseBoolSymbol =
-  (string "=" $> PParser 0 EQU) <|> (string "+" $> PParser 1 PLUS) <|>
-  (string "-" $> PParser 1 MINUS) <|>
-  (string "*" $> PParser 2 TIMES) <|>
-  (string "/" $> PParser 2 DIV)
+  (string "<>" $> PParser 2 NEQ) <|> (string "!=" $> PParser 2 NEQ) <|>
+  (anyCaseString "AND" $> PParser 0 AND) <|>
+  (anyCaseString "OR" $> PParser 0 OR) <|>
+  (anyCaseString "IS" $> PParser 2 IS) <|>
+  (string "<=" $> PParser 2 LESSEQ) <|>
+  (string ">=" $> PParser 2 GREATEQ) <|>
+  (string "<" $> PParser 2 LESS) <|>
+  (string ">" $> PParser 2 GREAT) <|>
+  (string "=" $> PParser 2 EQU) <|>
+  (string "+" $> PParser 4 PLUS) <|>
+  (string "-" $> PParser 4 MINUS) <|>
+  (string "*" $> PParser 6 TIMES) <|>
+  (string "/" $> PParser 6 DIV)
 
 data PrecendenceParser = PParser
   { prec :: Int

@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module SQLParserSpec
+module Parser.SQLSpec
   ( tests
   ) where
 
 import qualified AST as A
 import qualified Data.Attoparsec.ByteString as BP
        (endOfInput, parseOnly, word8)
-import qualified SQLParser as P
+import qualified Parser.SQL as P
 import Test.HUnit
 
 tests =

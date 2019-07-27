@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, TupleSections, RankNTypes #-}
 
-module SQLParser where
+module Parser.SQL where
 
 import AST
 import Control.Applicative (Alternative, (<|>), liftA, liftA2)
@@ -11,7 +11,7 @@ import Data.ByteString (ByteString)
 import Data.Functor (($>))
 import Data.Maybe (fromJust)
 import Data.Word (Word8)
-import Parser
+import Parser.Util
 import Tuple
 
 parseSelectExp :: Parser a -> Parser (SELECT_EXP, a)

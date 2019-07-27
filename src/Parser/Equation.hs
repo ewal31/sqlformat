@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ExistentialQuantification,
   ScopedTypeVariables, RankNTypes, TupleSections #-}
 
-module EquationParser where
+module Parser.Equation where
 
 import AST (ELSE, EQUATION(..), WHENTHEN(..))
 import Control.Applicative ((<|>), liftA2)
@@ -11,7 +11,7 @@ import Data.Either (either)
 import Data.Functor (($>))
 import Data.Maybe (fromJust)
 import Data.Stack
-import Parser
+import Parser.Util
 
 data Return a
   = Next a
@@ -26,37 +26,41 @@ parseEquation nxt = do
     run :: Parser ([(EQUATION, PrecendenceParser)], (EQUATION, a))
     run = do
       arg <-
-        brackets <|> case' <|>
+        brackets' <|> case' <|>
         (handler =<<
          anyUntilThat
-           (fmap Next (whitespace *> nxt <* whitespace) <|> ((string "(" <* whitespace) $> Func) <|>
+           (fmap Next (whitespace *> nxt <* whitespace) <|>
+            ((whitespace *> string "(" <* whitespace) $> Func) <|>
             fmap Bool (whitespace *> parseBoolSymbol <* whitespace)))
       either (return . ([], )) (\a -> fmap (liftA2 (,) ((:) a . fst) snd) run) arg
     handler :: (ByteString, Return a) -> Parser (Either (EQUATION, a) (EQUATION, PrecendenceParser))
     handler (bs, Next nxt) = pure $ Left (VAL bs, nxt)
     handler (bs, Bool pp) = pure $ Right (VAL bs, pp)
     handler (bs, Func) = func' bs
-    brackets = either' parseBrackets nxt parseBoolSymbol
+    brackets' = either' parseBrackets nxt parseBoolSymbol
     case' = either' parseCase nxt parseBoolSymbol
-    func' :: ByteString -> Parser (Either (EQUATION, a) (EQUATION, PrecendenceParser))
     func' bs = either' (parseFunction bs) nxt parseBoolSymbol
 
 either' ::
      (forall a. Parser a -> Parser (b, a)) -> Parser c -> Parser d -> Parser (Either (b, c) (b, d))
 either' psr a b = fmap Left (psr a) <|> fmap Right (psr b)
 
--- TODO make a type to wrap this in 
+-- newtype F = F
+--   { u :: forall a. Parser a -> Parser a
+--   }
+-- asdf :: [F] -> Parser (ByteString, a)
+-- asdf lst = anyUntilThat (foldl (<|>) (u . head $ lst) (u <$> tail lst))
+-- lab :: [F]
+-- lab = undefined
 parseBrackets :: Parser a -> Parser (EQUATION, a)
 parseBrackets nxt = do
   whitespace *> string "(" <* whitespace
   exp <- fst <$> parseEquation (string ")")
   n <- whitespace *> nxt
-  pure (exp, n)
+  pure (BRACKETS exp, n)
 
 parseFunction :: ByteString -> Parser a -> Parser (EQUATION, a)
-parseFunction name nxt
-  -- string "(" <* whitespace
- = do
+parseFunction name nxt = do
   args <- parseArgs
   n <- whitespace *> nxt
   pure (FUNC name args, n)

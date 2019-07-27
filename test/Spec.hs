@@ -1,11 +1,11 @@
 import Control.Monad (void)
-import qualified EquationParserSpec
-import qualified ParserSpec
-import qualified SQLParserSpec
+import qualified Parser.EquationSpec as Equation
+import qualified Parser.SQLSpec as SQL
+import qualified Parser.UtilSpec as Util
 import Test.HUnit
 import qualified TupleSpec
 
-tests = [EquationParserSpec.tests, ParserSpec.tests, SQLParserSpec.tests, TupleSpec.tests]
+tests = [Equation.tests, Util.tests, SQL.tests, TupleSpec.tests]
 
 main :: IO ()
 main = mapM_ runTestTT tests

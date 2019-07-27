@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, TupleSections, RankNTypes #-}
 
-module Parser where
+module Parser.Util where
 
 import Control.Applicative (Alternative, (<|>), liftA, liftA2)
 import Data.Attoparsec.ByteString as BP

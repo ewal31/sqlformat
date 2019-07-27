@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module EquationParserSpec
+module Parser.EquationSpec
   ( tests
   ) where
 
@@ -8,7 +8,7 @@ import qualified AST as A (ELSE, EQUATION(..), WHENTHEN(..))
 import qualified Data.Attoparsec.ByteString as BP
        (endOfInput, parseOnly, takeByteString, word8)
 import Data.ByteString (ByteString)
-import qualified EquationParser as P
+import qualified Parser.Equation as P
 import Test.HUnit
 
 tests = TestList [testParseFunction, testParseCase, testParseEquation]
@@ -138,11 +138,14 @@ testParseEquation =
       (P.parseEquation BP.endOfInput)
       "CASE WHEN x = 1 THEN 'one' WHEN x = 2 THEN 'two' END"
   , "(a + 2) * 1 = 1" ~:
-    Right (A.EQU (A.TIMES (A.PLUS (A.VAL "a") (A.VAL "2")) (A.VAL " 1")) (A.VAL "1"), ()) ~=?
+    Right
+      (A.EQU (A.TIMES (A.BRACKETS (A.PLUS (A.VAL "a") (A.VAL "2"))) (A.VAL " 1")) (A.VAL "1"), ()) ~=?
     BP.parseOnly (P.parseEquation BP.endOfInput) "(a + 2) * 1 = 1"
   , "SUM((a + 2) * 1) = 1" ~:
     Right
-      ( A.EQU (A.FUNC "SUM" [A.TIMES (A.PLUS (A.VAL "a") (A.VAL "2")) (A.VAL " 1")]) (A.VAL " 1")
+      ( A.EQU
+          (A.FUNC "SUM" [A.TIMES (A.BRACKETS (A.PLUS (A.VAL "a") (A.VAL "2"))) (A.VAL " 1")])
+          (A.VAL " 1")
       , ()) ~=?
     BP.parseOnly (P.parseEquation BP.endOfInput) "SUM((a + 2) * 1) = 1"
   ]

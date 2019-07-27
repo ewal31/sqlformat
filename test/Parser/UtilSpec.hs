@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module ParserSpec
+module Parser.UtilSpec
   ( tests
   ) where
 
 import qualified Data.Attoparsec.ByteString as BP
        (endOfInput, parseOnly, takeByteString, word8)
 import Data.ByteString (ByteString)
-import qualified Parser as P
+import qualified Parser.Util as P
 import Test.HUnit
 
 tests = TestList [testByteStringToUpper, testParseAnyCase, testParseSubExp]

@@ -4,6 +4,8 @@
 
 module Tuple where
 
+import Control.Applicative (liftA2)
+
 type family TupleFn ty out where
   TupleFn () output = output
   TupleFn (a, b) output = a -> TupleFn b output
@@ -29,3 +31,6 @@ instance (a ~ c, r ~ b) => Comp (a -> b) c r where
 
 instance (Comp (a -> b) d r1, r ~ (c -> r1)) => Comp (a -> b) (c -> d) r where
   f ... g = \c -> f ... g c
+
+mapT :: Applicative f => f a -> f b -> f (a, b)
+mapT = liftA2 (,)

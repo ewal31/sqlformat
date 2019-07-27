@@ -6,11 +6,12 @@ import AST.SQL
 import Control.Applicative (Alternative, (<|>), liftA, liftA2)
 import Data.Attoparsec.ByteString as BP
 import qualified Data.ByteString as BS
-       (concat, foldr, head, map, pack, readFile, tail)
+       (append, concat, foldr, head, map, pack, readFile, tail)
 import Data.ByteString (ByteString)
 import Data.Functor (($>))
 import Data.Maybe (fromJust)
 import Data.Word (Word8)
+import Parser.Equation (mkEquation, parseEquation)
 import Parser.Util
 import Tuple
 
@@ -111,8 +112,9 @@ parseOnExp = run "ON" ON
 
 parseColumnExp :: Parser a -> Parser ([COLUMN_EXP], a)
 parseColumnExp nxt =
-  fmap (liftA2 (,) (liftA2 (:) (liftA2 COLUMN fst (fst . snd)) (fst . snd . snd)) (snd . snd . snd)) $
-  anyUntilThat $ whitespace *> as nxt
+  fmap
+    (liftA2 (,) (liftA2 (:) (liftA2 COLUMN fst (fst . snd)) (fst . snd . snd)) (snd . snd . snd))
+    (all (as nxt) <|> parseEquation (whitespace *> as nxt))
   where
     as :: Parser a -> Parser (Maybe Alias, ([COLUMN_EXP], a))
     as nxt =
@@ -121,3 +123,8 @@ parseColumnExp nxt =
         (anyCaseString "AS" *> whitespace *> anyUntilThat (whitespace *> end nxt)) <|>
       fmap (Nothing, ) (whitespace *> end nxt)
     end nxt = (string "," *>| parseColumnExp nxt) <|> fmap ([], ) (whitespace *> nxt)
+    all nxt = do
+      whitespace
+      name <- (liftA2 BS.append fst snd <$> anyAlphaUntilThat (string ".*")) <|> string "*"
+      whitespace
+      (mkEquation name, ) <$> nxt

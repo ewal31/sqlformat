@@ -4,6 +4,7 @@ module Parser.SQLSpec
   ( tests
   ) where
 
+import qualified AST.Equation as AE
 import qualified AST.SQL as A
 import qualified Data.Attoparsec.ByteString as BP
        (endOfInput, parseOnly, word8)
@@ -146,7 +147,7 @@ testParseJoinExp =
             (Just $
              A.SELECT
                []
-               (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+               (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
                (A.FROM Nothing "table1")
                []
                []
@@ -171,7 +172,7 @@ testParseJoinExp =
             (Just $
              A.SELECT
                []
-               (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+               (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
                (A.FROM Nothing "table1")
                []
                []
@@ -223,7 +224,7 @@ testParseFromExp =
           (Just $
            A.SELECT
              []
-             (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+             (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
              (A.FROM Nothing "table")
              []
              []
@@ -244,7 +245,7 @@ testParseFromExp =
           (Just $
            A.SELECT
              []
-             (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+             (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
              (A.FROM Nothing "table")
              []
              []
@@ -258,7 +259,9 @@ testParseFromExp =
               (Just $
                A.SELECT
                  []
-                 (A.COLUMNS Nothing [A.COLUMN "id" Nothing, A.COLUMN "apples" Nothing])
+                 (A.COLUMNS
+                    Nothing
+                    [A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.VAL "apples") Nothing])
                  (A.FROM Nothing "table")
                  []
                  []
@@ -282,7 +285,7 @@ testParseColumnsExp =
   "parseColumnsExp" ~:
   [ "SELECT * FROM table" ~:
     Right
-      ( A.COLUMNS Nothing [A.COLUMN "*" Nothing]
+      ( A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing]
       , (A.FROM Nothing "table", ([], (Nothing, (Nothing, (Nothing, (Nothing, ()))))))) ~=?
     BP.parseOnly
       (P.parseColumnsExp $
@@ -292,7 +295,7 @@ testParseColumnsExp =
       "SELECT * FROM table"
   , "SELECT * FROM articles WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
     Right
-      ( A.COLUMNS Nothing [A.COLUMN "*" Nothing]
+      ( A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing]
       , ( A.FROM Nothing "articles"
         , ( [A.WHERE "id = 2"]
           , ( Just $ A.GROUP_BY "id, num"
@@ -305,7 +308,7 @@ testParseColumnsExp =
       "SELECT * FROM articles WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000"
   , "SELECT DISTINCT * FROM articles WHERE id = 2 GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
     Right
-      ( A.COLUMNS (Just A.DISTINCT) [A.COLUMN "*" Nothing]
+      ( A.COLUMNS (Just A.DISTINCT) [A.COLUMN (AE.VAL "*") Nothing]
       , ( A.FROM Nothing "articles"
         , ( [A.WHERE "id = 2"]
           , ( Just $ A.GROUP_BY "id, num"
@@ -325,7 +328,7 @@ testParseWithExp =
       ( []
       , ( A.SELECT
             []
-            (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+            (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test")
             []
             []
@@ -340,7 +343,7 @@ testParseWithExp =
       ( [ A.WITH "a" $
           A.SELECT
             []
-            (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+            (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test")
             []
             []
@@ -356,7 +359,7 @@ testParseWithExp =
       ( [ A.WITH "a" $
           A.SELECT
             []
-            (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+            (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test")
             []
             []
@@ -367,7 +370,7 @@ testParseWithExp =
         , A.WITH "b" $
           A.SELECT
             []
-            (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+            (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test2")
             []
             []
@@ -396,18 +399,18 @@ testParseOnExp =
 
 testParseColumnExp =
   "parseColumnExp" ~:
-  [ "id" ~: Right ([A.COLUMN "id" Nothing], ()) ~=?
+  [ "id" ~: Right ([A.COLUMN (AE.VAL "id") Nothing], ()) ~=?
     BP.parseOnly (P.parseColumnExp BP.endOfInput) "id"
-  , "id, name" ~: Right ([A.COLUMN "id" Nothing, A.COLUMN "name" Nothing], ()) ~=?
+  , "id, name" ~: Right ([A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.VAL "name") Nothing], ()) ~=?
     BP.parseOnly (P.parseColumnExp BP.endOfInput) "id, name"
   , "id AS something, name" ~:
-    Right ([A.COLUMN "id" (Just "something"), A.COLUMN "name" Nothing], ()) ~=?
+    Right ([A.COLUMN (AE.VAL "id") (Just "something"), A.COLUMN (AE.VAL "name") Nothing], ()) ~=?
     BP.parseOnly (P.parseColumnExp BP.endOfInput) "id AS something, name"
   , "id AS something, name AS something_else, a.*" ~:
     Right
-      ( [ A.COLUMN "id" (Just "something")
-        , A.COLUMN "name" (Just "something_else")
-        , A.COLUMN "a.*" Nothing
+      ( [ A.COLUMN (AE.VAL "id") (Just "something")
+        , A.COLUMN (AE.VAL "name") (Just "something_else")
+        , A.COLUMN (AE.VAL "a.*") Nothing
         ]
       , ()) ~=?
     BP.parseOnly (P.parseColumnExp BP.endOfInput) "id AS something, name AS something_else, a.*"
@@ -419,7 +422,7 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
           []
@@ -435,7 +438,7 @@ testParseSelectExp =
           [ A.WITH "b" $
             A.SELECT
               []
-              (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+              (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
               (A.FROM Nothing "test")
               []
               []
@@ -444,7 +447,7 @@ testParseSelectExp =
               Nothing
               Nothing
           ]
-          (A.COLUMNS Nothing [A.COLUMN "MAX(id)" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.FUNC "MAX" [AE.VAL "id"]) Nothing])
           (A.FROM Nothing "b")
           []
           []
@@ -460,12 +463,12 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM
              (Just $
               A.SELECT
                 []
-                (A.COLUMNS (Just A.DISTINCT) [A.COLUMN "*" Nothing])
+                (A.COLUMNS (Just A.DISTINCT) [A.COLUMN (AE.VAL "*") Nothing])
                 (A.FROM Nothing "test")
                 []
                 []
@@ -486,7 +489,7 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "a.*" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "a.*") Nothing])
           (A.FROM Nothing "test")
           []
           []
@@ -500,7 +503,7 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS (Just A.DISTINCT) [A.COLUMN "name" Nothing])
+          (A.COLUMNS (Just A.DISTINCT) [A.COLUMN (AE.VAL "name") Nothing])
           (A.FROM Nothing "test")
           []
           []
@@ -514,7 +517,7 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
           []
@@ -528,7 +531,7 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
           [A.WHERE "id = 23"]
@@ -542,7 +545,7 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "*" Nothing])
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
           [A.WHERE "id = 23", A.W_AND "ab = ba"]
@@ -556,7 +559,9 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "id" Nothing, A.COLUMN "COUNT(1)" Nothing])
+          (A.COLUMNS
+             Nothing
+             [A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.FUNC "COUNT" [AE.VAL "1"]) Nothing])
           (A.FROM Nothing "test")
           []
           []
@@ -570,7 +575,9 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "id" Nothing, A.COLUMN "MAX(id)" (Just "MAX")])
+          (A.COLUMNS
+             Nothing
+             [A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.FUNC "MAX" [AE.VAL "id"]) (Just "MAX")])
           (A.FROM Nothing "test")
           []
           []
@@ -584,12 +591,14 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "name" Nothing, A.COLUMN "SUM(val)" Nothing])
+          (A.COLUMNS
+             Nothing
+             [A.COLUMN (AE.VAL "name") Nothing, A.COLUMN (AE.FUNC "SUM" [AE.VAL "val"]) Nothing])
           (A.FROM Nothing "test")
           []
           []
-          (Just $ A.GROUP_BY "name")
-          (Just $ A.HAVING "COUNT(1) > 2")
+          (Just (A.GROUP_BY "name"))
+          (Just (A.HAVING "COUNT(1) > 2"))
           Nothing
           Nothing
       , ()) ~=?
@@ -600,12 +609,14 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
-          (A.COLUMNS Nothing [A.COLUMN "name" Nothing, A.COLUMN "SUM(val)" Nothing])
+          (A.COLUMNS
+             Nothing
+             [A.COLUMN (AE.VAL "name") Nothing, A.COLUMN (AE.FUNC "SUM" [AE.VAL "val"]) Nothing])
           (A.FROM Nothing "test")
           [A.JOIN A.RIGHT Nothing "table2" [A.ON "name = 'Wendy'"]]
           []
-          (Just $ A.GROUP_BY "name")
-          (Just $ A.HAVING "COUNT(1) > 2")
+          (Just (A.GROUP_BY "name"))
+          (Just (A.HAVING "COUNT(1) > 2"))
           Nothing
           Nothing
       , ()) ~=?

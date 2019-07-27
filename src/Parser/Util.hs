@@ -44,6 +44,9 @@ anyCaseString = BS.foldr ((*>) . anyCase) (pure ())
 whitespace :: Parser ()
 whitespace = skipMany (word8 9 <|> word8 10 <|> word8 13 <|> word8 32)
 
+alpha :: Parser Word8
+alpha = foldl1 (<|>) $ fmap word8 $ [65 .. 90] ++ [97 .. 122]
+
 (*>|) :: Parser a -> Parser b -> Parser b
 (*>|) a b = a *> whitespace *> b
 
@@ -61,6 +64,9 @@ untilThat p nxt = scan
 
 anyUntilThat :: Parser a -> Parser (ByteString, a)
 anyUntilThat nxt = liftA2 (,) (BS.pack . fst) snd <$> untilThat anyWord8 nxt
+
+anyAlphaUntilThat :: Parser a -> Parser (ByteString, a)
+anyAlphaUntilThat nxt = liftA2 (,) (BS.pack . fst) snd <$> untilThat alpha nxt
 
 either' ::
      (forall a. Parser a -> Parser (b, a)) -> Parser c -> Parser d -> Parser (Either (b, c) (b, d))

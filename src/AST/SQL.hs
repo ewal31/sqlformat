@@ -22,7 +22,7 @@ data JOINTYPE
   deriving (Eq, Show)
 
 data COLUMN_EXP =
-  COLUMN ColumnName
+  COLUMN EQUATION
          (Maybe Alias)
   deriving (Eq, Show)
 

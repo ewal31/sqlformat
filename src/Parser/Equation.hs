@@ -19,6 +19,9 @@ data Return a
   | Bool BinomOp
   | Func
 
+mkEquation :: ByteString -> EQUATION
+mkEquation = VAL
+
 parseEquation :: forall a. Parser a -> Parser (EQUATION, a)
 parseEquation nxt = do
   result@(lst, (end, n)) <- run

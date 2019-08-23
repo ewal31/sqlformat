@@ -48,9 +48,8 @@ data JOIN_EXP =
        [ON_EXP]
   deriving (Eq, Show)
 
-data WHERE_EXP
-  = WHERE ByteString
-  | W_AND ByteString
+newtype WHERE_EXP =
+  WHERE EQUATION
   deriving (Eq, Show)
 
 newtype GROUP_BY_EXP =
@@ -79,7 +78,7 @@ data SELECT_EXP =
          COLUMNS_EXP
          FROM_EXP
          [JOIN_EXP]
-         [WHERE_EXP]
+         (Maybe WHERE_EXP)
          (Maybe GROUP_BY_EXP)
          (Maybe HAVING_EXP)
          (Maybe ORDER_BY_EXP)

@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings, TupleSections, RankNTypes #-}
+{-# LANGUAGE OverloadedStrings, TupleSections, RankNTypes,
+  ScopedTypeVariables #-}
 
 module Parser.SQL where
 
@@ -68,14 +69,13 @@ parseJoinExp nxt =
   where
     join psr res = psr *>| anyCaseString "JOIN" $> res <* whitespace
 
-parseWhereExp :: Parser a -> Parser ([WHERE_EXP], a)
-parseWhereExp = run "WHERE" WHERE
+parseWhereExp :: forall a. Parser a -> Parser (Maybe WHERE_EXP, a)
+parseWhereExp nxt = (anyCaseString "WHERE" *> whitespace *> whereExp) <|> fmap (Nothing, ) nxt
   where
-    run :: ByteString -> (ByteString -> WHERE_EXP) -> Parser a -> Parser ([WHERE_EXP], a)
-    run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
-    parseKeyword key dat nxt =
-      fmap (liftA2 (,) (liftA2 (:) (dat . fst) (fst . snd)) (snd . snd)) $
-      anyCaseString key *>| anyUntilThat (whitespace *> run "AND" W_AND nxt)
+    whereExp :: Parser (Maybe WHERE_EXP, a)
+    whereExp = do
+      (wh, n) <- parseEquation nxt
+      return (Just . WHERE $ wh, n)
 
 parseGroupByExp :: Parser a -> Parser (Maybe GROUP_BY_EXP, a)
 parseGroupByExp nxt =

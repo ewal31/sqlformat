@@ -35,7 +35,7 @@ parseEquation nxt = do
          anyUntilThat
            (fmap Next (whitespace *> nxt <* whitespace) <|>
             ((whitespace *> string "(" <* whitespace) $> Func) <|>
-            fmap Bool (whitespace *> parseBoolSymbol <* whitespace)))
+            fmap Bool (whitespace1 *> parseBoolSymbol <* whitespace1)))
       either (return . ([], )) (\a -> fmap (liftA2 (,) ((:) a . fst) snd) run) arg
     handler :: (ByteString, Return a) -> Parser (Either (EQUATION, a) (EQUATION, BinomOp))
     handler (bs, Next nxt) = pure $ Left (VAL bs, nxt)

@@ -45,7 +45,7 @@ data JOIN_EXP =
   JOIN JOINTYPE
        (Maybe SELECT_EXP)
        TableName
-       [ON_EXP]
+       (Maybe EQUATION)
   deriving (Eq, Show)
 
 newtype WHERE_EXP =
@@ -54,11 +54,6 @@ newtype WHERE_EXP =
 
 newtype GROUP_BY_EXP =
   GROUP_BY ByteString
-  deriving (Eq, Show)
-
-data ON_EXP
-  = ON ByteString
-  | O_AND ByteString
   deriving (Eq, Show)
 
 newtype HAVING_EXP =

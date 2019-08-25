@@ -21,7 +21,7 @@ tests =
     , testParseFromExp
     , testParseColumnsExp
     , testParseWithExp
-    , testParseOnExp
+    -- , testParseOnExp
     , testParseColumnExp
     , testParseSelectExp
     ]
@@ -130,21 +130,21 @@ testParseWhereExp =
 
 testParseJoinExp =
   "parseJoinExp" ~:
-  [ "JOIN table" ~: Right ([A.JOIN A.INNER Nothing "table" []], ()) ~=?
+  [ "JOIN table" ~: Right ([A.JOIN A.INNER Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN table"
-  , "INNER JOIN table" ~: Right ([A.JOIN A.INNER Nothing "table" []], ()) ~=?
+  , "INNER JOIN table" ~: Right ([A.JOIN A.INNER Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "INNER JOIN table"
-  , "LEFT JOIN table" ~: Right ([A.JOIN A.LEFT Nothing "table" []], ()) ~=?
+  , "LEFT JOIN table" ~: Right ([A.JOIN A.LEFT Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "LEFT JOIN table"
-  , "LEFT OUTER JOIN table" ~: Right ([A.JOIN A.LEFT Nothing "table" []], ()) ~=?
+  , "LEFT OUTER JOIN table" ~: Right ([A.JOIN A.LEFT Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "LEFT OUTER JOIN table"
-  , "RIGHT JOIN table" ~: Right ([A.JOIN A.RIGHT Nothing "table" []], ()) ~=?
+  , "RIGHT JOIN table" ~: Right ([A.JOIN A.RIGHT Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "RIGHT JOIN table"
-  , "RIGHT OUTER JOIN table" ~: Right ([A.JOIN A.RIGHT Nothing "table" []], ()) ~=?
+  , "RIGHT OUTER JOIN table" ~: Right ([A.JOIN A.RIGHT Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "RIGHT OUTER JOIN table"
-  , "FULL JOIN table" ~: Right ([A.JOIN A.FULL Nothing "table" []], ()) ~=?
+  , "FULL JOIN table" ~: Right ([A.JOIN A.FULL Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "FULL JOIN table"
-  , "FULL OUTER JOIN table" ~: Right ([A.JOIN A.FULL Nothing "table" []], ()) ~=?
+  , "FULL OUTER JOIN table" ~: Right ([A.JOIN A.FULL Nothing "table" Nothing], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "FULL OUTER JOIN table"
   , "JOIN (SELECT * FROM table1) table2" ~:
     Right
@@ -162,14 +162,22 @@ testParseJoinExp =
                Nothing
                Nothing)
             "table2"
-            []
+            Nothing
         ]
       , ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN (SELECT * FROM table1) table2"
-  , "JOIN table ON a = b" ~: Right ([A.JOIN A.INNER Nothing "table" [A.ON "a = b"]], ()) ~=?
+  , "JOIN table ON a = b" ~:
+    Right ([A.JOIN A.INNER Nothing "table" (Just $ AE.EQU (AE.VAL "a") (AE.VAL "b"))], ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN table ON a = b"
   , "JOIN table ON a = b AND c = d" ~:
-    Right ([A.JOIN A.INNER Nothing "table" [A.ON "a = b", A.O_AND "c = d"]], ()) ~=?
+    Right
+      ( [ A.JOIN
+            A.INNER
+            Nothing
+            "table"
+            (Just $ AE.AND (AE.EQU (AE.VAL "a") (AE.VAL "b")) (AE.EQU (AE.VAL "c") (AE.VAL "d")))
+        ]
+      , ()) ~=?
     BP.parseOnly (P.parseJoinExp BP.endOfInput) "JOIN table ON a = b AND c = d"
   , "JOIN (SELECT * FROM table1) table2 ON a = b AND c = d" ~:
     Right
@@ -187,7 +195,7 @@ testParseJoinExp =
                Nothing
                Nothing)
             "table2"
-            [A.ON "a = b", A.O_AND "c = d"]
+            (Just $ AE.AND (AE.EQU (AE.VAL "a") (AE.VAL "b")) (AE.EQU (AE.VAL "c") (AE.VAL "d")))
         ]
       , ()) ~=?
     BP.parseOnly
@@ -195,8 +203,12 @@ testParseJoinExp =
       "JOIN (SELECT * FROM table1) table2 ON a = b AND c = d"
   , "JOIN table ON a = b AND c = d LEFT JOIN table2 ON apples = oranges" ~:
     Right
-      ( [ A.JOIN A.INNER Nothing "table" [A.ON "a = b", A.O_AND "c = d"]
-        , A.JOIN A.LEFT Nothing "table2" [A.ON "apples = oranges"]
+      ( [ A.JOIN
+            A.INNER
+            Nothing
+            "table"
+            (Just $ AE.AND (AE.EQU (AE.VAL "a") (AE.VAL "b")) (AE.EQU (AE.VAL "c") (AE.VAL "d")))
+        , A.JOIN A.LEFT Nothing "table2" (Just $ AE.EQU (AE.VAL "apples") (AE.VAL "oranges"))
         ]
       , ()) ~=?
     BP.parseOnly
@@ -276,7 +288,8 @@ testParseFromExp =
                  Nothing
                  Nothing)
               "table2"
-              [A.ON "id = 4", A.O_AND "apples = 1"]
+              (Just $
+               AE.AND (AE.EQU (AE.VAL "id") (AE.VAL "4")) (AE.EQU (AE.VAL "apples") (AE.VAL "1")))
           ]
         , (Nothing, (Nothing, (Nothing, (Nothing, (Nothing, ()))))))) ~=?
     BP.parseOnly
@@ -391,18 +404,17 @@ testParseWithExp =
       "WITH a AS ( SELECT * FROM test ), b AS ( SELECT * FROM test2 )"
   ]
 
-testParseOnExp =
-  "parseOnExp" ~:
-  [ "ON a = b" ~: Right ([A.ON "a = b"], ()) ~=?
-    BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b"
-  , "ON a = b AND c = d" ~: Right ([A.ON "a = b", A.O_AND "c = d"], ()) ~=?
-    BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d"
-  , "ON a = b AND c = d AND e = f AND g = h" ~:
-    Right ([A.ON "a = b", A.O_AND "c = d", A.O_AND "e = f", A.O_AND "g = h"], ()) ~=?
-    BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d AND e = f AND g = h"
-  , "AND c = d" ~: Left "endOfInput" ~=? BP.parseOnly (P.parseOnExp BP.endOfInput) "AND c = d"
-  ]
-
+-- testParseOnExp =
+--   "parseOnExp" ~:
+--   [ "ON a = b" ~: Right ([A.ON "a = b"], ()) ~=?
+--     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b"
+--   , "ON a = b AND c = d" ~: Right ([A.ON "a = b", A.O_AND "c = d"], ()) ~=?
+--     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d"
+--   , "ON a = b AND c = d AND e = f AND g = h" ~:
+--     Right ([A.ON "a = b", A.O_AND "c = d", A.O_AND "e = f", A.O_AND "g = h"], ()) ~=?
+--     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d AND e = f AND g = h"
+--   , "AND c = d" ~: Left "endOfInput" ~=? BP.parseOnly (P.parseOnExp BP.endOfInput) "AND c = d"
+--   ]
 testParseColumnExp =
   "parseColumnExp" ~:
   [ "id" ~: Right ([A.COLUMN (AE.VAL "id") Nothing], ()) ~=?
@@ -621,7 +633,7 @@ testParseSelectExp =
              Nothing
              [A.COLUMN (AE.VAL "name") Nothing, A.COLUMN (AE.FUNC "SUM" [AE.VAL "val"]) Nothing])
           (A.FROM Nothing "test")
-          [A.JOIN A.RIGHT Nothing "table2" [A.ON "name = 'Wendy'"]]
+          [A.JOIN A.RIGHT Nothing "table2" (Just $ AE.EQU (AE.VAL "name") (AE.VAL "'Wendy'"))]
           Nothing
           (Just (A.GROUP_BY "name"))
           (Just (A.HAVING "COUNT(1) > 2"))

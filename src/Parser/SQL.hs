@@ -64,10 +64,13 @@ parseJoinExp nxt =
           (,)
           (liftA2 (:) (liftA2 (JOIN joinType select) fst (fst . snd)) (fst . snd . snd))
           (snd . snd . snd))
-       (whitespace *> anyUntilThat (whitespace *> parseOnExp (parseJoinExp nxt)))
+       (whitespace *> anyUntilThat (whitespace *> maybeEqu (parseJoinExp nxt)))
      <|> fmap ([], ) (whitespace *> nxt)
   where
     join psr res = psr *>| anyCaseString "JOIN" $> res <* whitespace
+    maybeEqu nxt =
+      fmap (liftA2 (,) (Just . fst) snd) (anyCaseString "ON" *>| parseEquation nxt) <|>
+      fmap (Nothing, ) nxt
 
 parseWhereExp :: forall a. Parser a -> Parser (Maybe WHERE_EXP, a)
 parseWhereExp nxt = (anyCaseString "WHERE" *> whitespace *> whereExp) <|> fmap (Nothing, ) nxt
@@ -101,15 +104,14 @@ parseLimitExp nxt =
    fmap (liftA2 (,) (Just . LIMIT . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
-parseOnExp :: Parser a -> Parser ([ON_EXP], a)
-parseOnExp = run "ON" ON
-  where
-    run :: ByteString -> (ByteString -> ON_EXP) -> Parser a -> Parser ([ON_EXP], a)
-    run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
-    parseKeyword key dat nxt =
-      fmap (liftA2 (,) (liftA2 (:) (dat . fst) (fst . snd)) (snd . snd)) $
-      anyCaseString key *>| anyUntilThat (whitespace *> run "AND" O_AND nxt)
-
+-- parseOnExp :: Parser a -> Parser ([ON_EXP], a)
+-- parseOnExp = run "ON" ON
+--   where
+--     run :: ByteString -> (ByteString -> ON_EXP) -> Parser a -> Parser ([ON_EXP], a)
+--     run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
+--     parseKeyword key dat nxt =
+--       fmap (liftA2 (,) (liftA2 (:) (dat . fst) (fst . snd)) (snd . snd)) $
+--       anyCaseString key *>| anyUntilThat (whitespace *> run "AND" O_AND nxt)
 parseColumnExp :: Parser a -> Parser ([COLUMN_EXP], a)
 parseColumnExp nxt =
   fmap

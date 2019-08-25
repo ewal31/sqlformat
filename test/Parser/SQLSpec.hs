@@ -21,7 +21,6 @@ tests =
     , testParseFromExp
     , testParseColumnsExp
     , testParseWithExp
-    -- , testParseOnExp
     , testParseColumnExp
     , testParseSelectExp
     ]
@@ -51,7 +50,8 @@ testParseOrderByExp =
 
 testParseHavingExp =
   "parseOrderByExp" ~:
-  [ "HAVING id = 1" ~: Right (Just $ A.HAVING "id = 1", (Nothing, (Nothing, ()))) ~=?
+  [ "HAVING id = 1" ~:
+    Right (Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1"), (Nothing, (Nothing, ()))) ~=?
     BP.parseOnly
       (P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "HAVING id = 1"
@@ -63,12 +63,15 @@ testParseHavingExp =
       (P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "ORDER BY id ASC LIMIT 1000"
   , "HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
-    Right (Just $ A.HAVING "id = 1", (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))) ~=?
+    Right
+      ( Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1")
+      , (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))) ~=?
     BP.parseOnly
       (P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "HAVING id = 1 ORDER BY id ASC LIMIT 1000"
   , "HAVING id = 1 LIMIT 1000" ~:
-    Right (Just $ A.HAVING "id = 1", (Nothing, (Just $ A.LIMIT "1000", ()))) ~=?
+    Right
+      (Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1"), (Nothing, (Just $ A.LIMIT "1000", ()))) ~=?
     BP.parseOnly
       (P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "HAVING id = 1 LIMIT 1000"
@@ -87,7 +90,8 @@ testParseGroupByExp =
   , "GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000" ~:
     Right
       ( Just $ A.GROUP_BY "id, num"
-      , (Just $ A.HAVING "id = 1", (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ())))) ~=?
+      , ( Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1")
+        , (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ())))) ~=?
     BP.parseOnly
       (P.parseGroupByExp $ P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
       "GROUP BY id, num HAVING id = 1 ORDER BY id ASC LIMIT 1000"
@@ -121,7 +125,8 @@ testParseWhereExp =
     Right
       ( Just $ A.WHERE (AE.EQU (AE.VAL "id") (AE.VAL "2"))
       , ( Just $ A.GROUP_BY "id, num"
-        , (Just $ A.HAVING "id = 1", (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))))) ~=?
+        , ( Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1")
+          , (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))))) ~=?
     BP.parseOnly
       (P.parseWhereExp $
        P.parseGroupByExp $ P.parseHavingExp $ P.parseOrderByExp $ P.parseLimitExp BP.endOfInput)
@@ -230,7 +235,8 @@ testParseFromExp =
       ( A.FROM Nothing "articles"
       , ( Just $ A.WHERE $ AE.EQU (AE.VAL "id") (AE.VAL "2")
         , ( Just $ A.GROUP_BY "id, num"
-          , (Just $ A.HAVING "id = 1", (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ())))))) ~=?
+          , ( Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1")
+            , (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ())))))) ~=?
     BP.parseOnly
       (P.parseFromExp $
        P.parseWhereExp $
@@ -318,7 +324,8 @@ testParseColumnsExp =
       , ( A.FROM Nothing "articles"
         , ( Just $ A.WHERE $ AE.EQU (AE.VAL "id") (AE.VAL "2")
           , ( Just $ A.GROUP_BY "id, num"
-            , (Just $ A.HAVING "id = 1", (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))))))) ~=?
+            , ( Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1")
+              , (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))))))) ~=?
     BP.parseOnly
       (P.parseColumnsExp $
        P.parseFromExp $
@@ -331,7 +338,8 @@ testParseColumnsExp =
       , ( A.FROM Nothing "articles"
         , ( Just $ A.WHERE $ AE.EQU (AE.VAL "id") (AE.VAL "2")
           , ( Just $ A.GROUP_BY "id, num"
-            , (Just $ A.HAVING "id = 1", (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))))))) ~=?
+            , ( Just $ A.HAVING $ AE.EQU (AE.VAL "id") (AE.VAL "1")
+              , (Just $ A.ORDER_BY "id ASC", (Just $ A.LIMIT "1000", ()))))))) ~=?
     BP.parseOnly
       (P.parseColumnsExp $
        P.parseFromExp $
@@ -404,17 +412,6 @@ testParseWithExp =
       "WITH a AS ( SELECT * FROM test ), b AS ( SELECT * FROM test2 )"
   ]
 
--- testParseOnExp =
---   "parseOnExp" ~:
---   [ "ON a = b" ~: Right ([A.ON "a = b"], ()) ~=?
---     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b"
---   , "ON a = b AND c = d" ~: Right ([A.ON "a = b", A.O_AND "c = d"], ()) ~=?
---     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d"
---   , "ON a = b AND c = d AND e = f AND g = h" ~:
---     Right ([A.ON "a = b", A.O_AND "c = d", A.O_AND "e = f", A.O_AND "g = h"], ()) ~=?
---     BP.parseOnly (P.parseOnExp BP.endOfInput) "ON a = b AND c = d AND e = f AND g = h"
---   , "AND c = d" ~: Left "endOfInput" ~=? BP.parseOnly (P.parseOnExp BP.endOfInput) "AND c = d"
---   ]
 testParseColumnExp =
   "parseColumnExp" ~:
   [ "id" ~: Right ([A.COLUMN (AE.VAL "id") Nothing], ()) ~=?
@@ -618,7 +615,7 @@ testParseSelectExp =
           []
           Nothing
           (Just (A.GROUP_BY "name"))
-          (Just (A.HAVING "COUNT(1) > 2"))
+          (Just $ A.HAVING $ AE.GREAT (AE.FUNC "COUNT" [AE.VAL "1"]) (AE.VAL " 2"))
           Nothing
           Nothing
       , ()) ~=?
@@ -636,7 +633,7 @@ testParseSelectExp =
           [A.JOIN A.RIGHT Nothing "table2" (Just $ AE.EQU (AE.VAL "name") (AE.VAL "'Wendy'"))]
           Nothing
           (Just (A.GROUP_BY "name"))
-          (Just (A.HAVING "COUNT(1) > 2"))
+          (Just $ A.HAVING $ AE.GREAT (AE.FUNC "COUNT" [AE.VAL "1"]) (AE.VAL " 2"))
           Nothing
           Nothing
       , ()) ~=?

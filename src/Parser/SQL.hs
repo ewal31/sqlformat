@@ -89,7 +89,7 @@ parseGroupByExp nxt =
 parseHavingExp :: Parser a -> Parser (Maybe HAVING_EXP, a)
 parseHavingExp nxt =
   (anyCaseString "HAVING" *>|
-   fmap (liftA2 (,) (Just . HAVING . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
+   fmap (liftA2 (,) (Just . HAVING . fst) snd) (parseEquation (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseOrderByExp :: Parser a -> Parser (Maybe ORDER_BY_EXP, a)
@@ -104,14 +104,6 @@ parseLimitExp nxt =
    fmap (liftA2 (,) (Just . LIMIT . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
--- parseOnExp :: Parser a -> Parser ([ON_EXP], a)
--- parseOnExp = run "ON" ON
---   where
---     run :: ByteString -> (ByteString -> ON_EXP) -> Parser a -> Parser ([ON_EXP], a)
---     run key dat nxt = parseKeyword key dat nxt <|> fmap ([], ) (whitespace *> nxt)
---     parseKeyword key dat nxt =
---       fmap (liftA2 (,) (liftA2 (:) (dat . fst) (fst . snd)) (snd . snd)) $
---       anyCaseString key *>| anyUntilThat (whitespace *> run "AND" O_AND nxt)
 parseColumnExp :: Parser a -> Parser ([COLUMN_EXP], a)
 parseColumnExp nxt =
   fmap

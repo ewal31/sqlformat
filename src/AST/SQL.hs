@@ -57,7 +57,7 @@ newtype GROUP_BY_EXP =
   deriving (Eq, Show)
 
 newtype HAVING_EXP =
-  HAVING ByteString
+  HAVING EQUATION
   deriving (Eq, Show)
 
 newtype ORDER_BY_EXP =

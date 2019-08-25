@@ -1,5 +1,6 @@
 module AST.Equation where
 
+import AST.SQL (SELECT_EXP)
 import Data.ByteString (ByteString)
 
 type FunctionName = ByteString
@@ -46,4 +47,5 @@ data EQUATION
   | CASE (Maybe EQUATION)
          [WHENTHEN]
          (Maybe ELSE)
+  | S_EXP (SELECT_EXP EQUATION)
   deriving (Eq, Show)

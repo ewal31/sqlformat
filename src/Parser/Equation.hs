@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, TupleSections
-  #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, TupleSections,
+  RankNTypes #-}
 
 module Parser.Equation where
 
@@ -10,6 +10,7 @@ import Data.ByteString (ByteString)
 import Data.Either (either)
 import Data.Functor (($>))
 import Data.Maybe (maybe)
+import Parser.SQL (SubParser(..), parseSelectExp)
 import Parser.Util
 
 type BinomOp = PrecedenceOperator EQUATION
@@ -21,6 +22,9 @@ data Return a
 
 mkEquation :: ByteString -> EQUATION
 mkEquation = VAL
+
+instance SubParser EQUATION where
+  parseSub = parseEquation
 
 parseEquation :: forall a. Parser a -> Parser (EQUATION, a)
 parseEquation nxt = do
@@ -56,9 +60,11 @@ parseEquation nxt = do
 parseBrackets :: Parser a -> Parser (EQUATION, a)
 parseBrackets nxt = do
   whitespace *> string "(" <* whitespace
-  exp <- fst <$> parseEquation (string ")")
+  exp <-
+    (S_EXP . fst <$> parseSelectExp (string ")")) <|>
+    (BRACKETS . fst <$> parseEquation (string ")"))
   n <- whitespace *> nxt
-  pure (BRACKETS exp, n)
+  pure (exp, n)
 
 parseFunction :: ByteString -> Parser a -> Parser (EQUATION, a)
 parseFunction name nxt = do

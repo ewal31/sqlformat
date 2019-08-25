@@ -1,6 +1,5 @@
 module AST.SQL where
 
-import AST.Equation (EQUATION)
 import Data.ByteString (ByteString)
 
 type TableName = ByteString
@@ -21,43 +20,43 @@ data JOINTYPE
   | FULL
   deriving (Eq, Show)
 
-data COLUMN_EXP =
-  COLUMN EQUATION
+data COLUMN_EXP a =
+  COLUMN a
          (Maybe Alias)
   deriving (Eq, Show)
 
-data WITH_EXP =
+data WITH_EXP a =
   WITH Alias
-       SELECT_EXP
+       (SELECT_EXP a)
   deriving (Eq, Show)
 
-data COLUMNS_EXP =
+data COLUMNS_EXP a =
   COLUMNS (Maybe SELECT_MOD)
-          [COLUMN_EXP]
+          [COLUMN_EXP a]
   deriving (Eq, Show)
 
-data FROM_EXP =
-  FROM (Maybe SELECT_EXP)
+data FROM_EXP a =
+  FROM (Maybe (SELECT_EXP a))
        TableName
   deriving (Eq, Show)
 
-data JOIN_EXP =
+data JOIN_EXP a =
   JOIN JOINTYPE
-       (Maybe SELECT_EXP)
+       (Maybe (SELECT_EXP a))
        TableName
-       (Maybe EQUATION)
+       (Maybe a)
   deriving (Eq, Show)
 
-newtype WHERE_EXP =
-  WHERE EQUATION
+newtype WHERE_EXP a =
+  WHERE a
   deriving (Eq, Show)
 
 newtype GROUP_BY_EXP =
   GROUP_BY ByteString
   deriving (Eq, Show)
 
-newtype HAVING_EXP =
-  HAVING EQUATION
+newtype HAVING_EXP a =
+  HAVING a
   deriving (Eq, Show)
 
 newtype ORDER_BY_EXP =
@@ -68,14 +67,14 @@ newtype LIMIT_EXP =
   LIMIT ByteString
   deriving (Eq, Show)
 
-data SELECT_EXP =
-  SELECT [WITH_EXP]
-         COLUMNS_EXP
-         FROM_EXP
-         [JOIN_EXP]
-         (Maybe WHERE_EXP)
+data SELECT_EXP a =
+  SELECT [WITH_EXP a]
+         (COLUMNS_EXP a)
+         (FROM_EXP a)
+         [JOIN_EXP a]
+         (Maybe (WHERE_EXP a))
          (Maybe GROUP_BY_EXP)
-         (Maybe HAVING_EXP)
+         (Maybe (HAVING_EXP a))
          (Maybe ORDER_BY_EXP)
          (Maybe LIMIT_EXP)
   deriving (Eq, Show)

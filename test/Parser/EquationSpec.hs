@@ -5,6 +5,7 @@ module Parser.EquationSpec
   ) where
 
 import qualified AST.Equation as A
+import qualified AST.SQL as AS
 import qualified Data.Attoparsec.ByteString as BP
        (endOfInput, parseOnly, takeByteString, word8)
 import Data.ByteString (ByteString)
@@ -195,4 +196,21 @@ testParseEquation =
           (A.NEQ (A.VAL "b") (A.BRACKETS (A.TIMES (A.VAL "3") (A.VAL "a"))))
       , ()) ~=?
     BP.parseOnly (P.parseEquation BP.endOfInput) "a * 1 <> 2 + 3 AND b != (3 * a)"
+  , "id = (select max(id) from table)" ~:
+    Right
+      ( A.EQU
+          (A.VAL "id")
+          (A.S_EXP
+             (AS.SELECT
+                []
+                (AS.COLUMNS Nothing [AS.COLUMN (A.FUNC "max" [A.VAL "id"]) (Just "id")])
+                (AS.FROM Nothing "table")
+                []
+                Nothing
+                Nothing
+                Nothing
+                Nothing
+                Nothing))
+      , ()) ~=?
+    BP.parseOnly (P.parseEquation BP.endOfInput) "id = (select max(id) as id from table)"
   ]

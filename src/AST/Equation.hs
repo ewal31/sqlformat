@@ -49,3 +49,8 @@ data EQUATION
          (Maybe ELSE)
   | S_EXP (SELECT_EXP EQUATION)
   deriving (Eq, Show)
+-- TODO
+-- BETWEEN  eg  WHERE `timestamp` BETWEEN date_sub(now(), interval 1 year) AND now()
+-- " "
+-- ' '
+-- ` `

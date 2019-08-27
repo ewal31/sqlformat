@@ -81,10 +81,10 @@ parseWhereExp nxt = (anyCaseString "WHERE" *> whitespace *> whereExp) <|> fmap (
       (wh, n) <- parseSub nxt
       return (Just . WHERE $ wh, n)
 
-parseGroupByExp :: Parser a -> Parser (Maybe GROUP_BY_EXP, a)
+parseGroupByExp :: (SubParser b) => Parser a -> Parser (Maybe (GROUP_BY_EXP b), a)
 parseGroupByExp nxt =
   (anyCaseString "GROUP BY" *>|
-   fmap (liftA2 (,) (Just . GROUP_BY . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
+   fmap (liftA2 (,) (Just . GROUP_BY . fst) snd) (parseSub (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseHavingExp :: (SubParser b) => Parser a -> Parser (Maybe (HAVING_EXP b), a)
@@ -93,16 +93,16 @@ parseHavingExp nxt =
    fmap (liftA2 (,) (Just . HAVING . fst) snd) (parseSub (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
-parseOrderByExp :: Parser a -> Parser (Maybe ORDER_BY_EXP, a)
+parseOrderByExp :: (SubParser b) => Parser a -> Parser (Maybe (ORDER_BY_EXP b), a)
 parseOrderByExp nxt =
   (anyCaseString "ORDER BY" *>|
-   fmap (liftA2 (,) (Just . ORDER_BY . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
+   fmap (liftA2 (,) (Just . ORDER_BY . fst) snd) (parseSub (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
-parseLimitExp :: Parser a -> Parser (Maybe LIMIT_EXP, a)
+parseLimitExp :: (SubParser b) => Parser a -> Parser (Maybe (LIMIT_EXP b), a)
 parseLimitExp nxt =
   (anyCaseString "LIMIT" *>|
-   fmap (liftA2 (,) (Just . LIMIT . fst) snd) (anyUntilThat (whitespace *> nxt))) <|>
+   fmap (liftA2 (,) (Just . LIMIT . fst) snd) (parseSub (whitespace *> nxt))) <|>
   fmap (Nothing, ) (whitespace *> nxt)
 
 parseColumnExp :: (SubParser b) => Parser a -> Parser ([COLUMN_EXP b], a)

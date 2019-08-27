@@ -51,20 +51,20 @@ newtype WHERE_EXP a =
   WHERE a
   deriving (Eq, Show)
 
-newtype GROUP_BY_EXP =
-  GROUP_BY ByteString
+newtype GROUP_BY_EXP a =
+  GROUP_BY a
   deriving (Eq, Show)
 
 newtype HAVING_EXP a =
   HAVING a
   deriving (Eq, Show)
 
-newtype ORDER_BY_EXP =
-  ORDER_BY ByteString
+newtype ORDER_BY_EXP a =
+  ORDER_BY a
   deriving (Eq, Show)
 
-newtype LIMIT_EXP =
-  LIMIT ByteString
+newtype LIMIT_EXP a =
+  LIMIT a
   deriving (Eq, Show)
 
 data SELECT_EXP a =
@@ -73,8 +73,8 @@ data SELECT_EXP a =
          (FROM_EXP a)
          [JOIN_EXP a]
          (Maybe (WHERE_EXP a))
-         (Maybe GROUP_BY_EXP)
+         (Maybe (GROUP_BY_EXP a))
          (Maybe (HAVING_EXP a))
-         (Maybe ORDER_BY_EXP)
-         (Maybe LIMIT_EXP)
+         (Maybe (ORDER_BY_EXP a))
+         (Maybe (LIMIT_EXP a))
   deriving (Eq, Show)

@@ -78,3 +78,10 @@ data SELECT_EXP a =
          (Maybe (ORDER_BY_EXP a))
          (Maybe (LIMIT_EXP a))
   deriving (Eq, Show)
+
+-- /* comment */ anywhere multiline
+-- -- comment    until end of line
+data COMMENT
+  = LINE_COMMENT ByteString
+  | BLOCK_COMMENT ByteString
+  deriving (Eq, Show)

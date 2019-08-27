@@ -41,11 +41,21 @@ anyCaseString = BS.foldr ((*>) . anyCase) (pure ())
   where
     anyCase c = (<|>) (word8 . lower8 $ c) (word8 . upper8 $ c)
 
+-- TODO rename
 whitespace :: Parser ()
 whitespace = skipMany (word8 9 <|> word8 10 <|> word8 13 <|> word8 32)
 
+-- TODO rename
 whitespace1 :: Parser () -- TODO maybe should change to at least 1 tab or space not all
 whitespace1 = skipMany1 (word8 9 <|> word8 10 <|> word8 13 <|> word8 32)
+
+-- Only Spaces
+-- the two above include newlines and stuff
+space :: Parser ()
+space = skipMany (word8 9 <|> word8 32)
+
+endOfLine :: Parser ()
+endOfLine = space *> ((word8 10 *> (word8 13 <|> pure 13)) $> ())
 
 alpha :: Parser Word8
 alpha = foldl1 (<|>) $ fmap word8 $ [65 .. 90] ++ [97 .. 122]

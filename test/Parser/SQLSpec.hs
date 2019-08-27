@@ -15,7 +15,8 @@ import Test.HUnit
 
 tests =
   TestList
-    [ testParseLimitExp
+    [ testParseComment
+    , testParseLimitExp
     , testParseOrderByExp
     , testParseHavingExp
     , testParseGroupByExp
@@ -33,6 +34,26 @@ type PFun a = forall b. BP.Parser b -> BP.Parser (a AE.EQUATION, b)
 type PFunM a = forall b. BP.Parser b -> BP.Parser (Maybe (a AE.EQUATION), b)
 
 type PFunL a = forall b. BP.Parser b -> BP.Parser ([a AE.EQUATION], b)
+
+testParseComment =
+  "parseComment" ~:
+  [ "" ~: Right (Nothing, ()) ~=? BP.parseOnly (P.parseLineComment BP.endOfInput) ""
+  , "-- This is a comment\n" ~: Right (Just (A.LINE_COMMENT "This is a comment"), ()) ~=?
+    BP.parseOnly (P.parseLineComment BP.endOfInput) "-- This is a comment\n"
+  , "-- This is a comment\n\r" ~: Right (Just (A.LINE_COMMENT "This is a comment"), ()) ~=?
+    BP.parseOnly (P.parseLineComment BP.endOfInput) "-- This is a comment\n\r"
+  , "-- This is a comment\nB" ~: Right (Just (A.LINE_COMMENT "This is a comment"), 66) ~=?
+    BP.parseOnly (P.parseLineComment $ BP.word8 66) "-- This is a comment\nB"
+  , "B" ~: Right (Nothing, 66) ~=? BP.parseOnly (P.parseLineComment $ BP.word8 66) "B"
+  , "" ~: Right (Nothing, ()) ~=? BP.parseOnly (P.parseBlockComment BP.endOfInput) ""
+  , "/* This is a comment */" ~: Right (Just (A.BLOCK_COMMENT "This is a comment"), ()) ~=?
+    BP.parseOnly (P.parseBlockComment BP.endOfInput) "/* This is a comment */"
+  , "/* This is a comment \n Something */" ~:
+    Right (Just (A.BLOCK_COMMENT "This is a comment \n Something"), ()) ~=?
+    BP.parseOnly (P.parseBlockComment BP.endOfInput) "/* This is a comment \n Something */"
+  , "/* This is a comment */B" ~: Right (Just (A.BLOCK_COMMENT "This is a comment"), 66) ~=?
+    BP.parseOnly (P.parseBlockComment $ BP.word8 66) "/* This is a comment */B"
+  ]
 
 testParseLimitExp =
   "parseLimitExp" ~:

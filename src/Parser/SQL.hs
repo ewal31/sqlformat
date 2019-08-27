@@ -124,3 +124,21 @@ parseColumnExp nxt =
     --   name <- (liftA2 BS.append fst snd <$> anyAlphaUntilThat (string ".*")) <|> string "*"
     --   whitespace
     --   (mkEquation name, ) <$> nxt
+
+parseLineComment :: Parser a -> Parser (Maybe COMMENT, a)
+parseLineComment nxt = do
+  comment <-
+    fmap (Just . LINE_COMMENT . fst) (whitespace *> string "--" *> space *> anyUntilThat endOfLine) <|>
+    pure Nothing
+  n <- nxt
+  return (comment, n)
+
+parseBlockComment :: Parser a -> Parser (Maybe COMMENT, a)
+parseBlockComment nxt = do
+  comment <-
+    fmap
+      (Just . BLOCK_COMMENT . fst)
+      (whitespace *> string "/*" *>| anyUntilThat (whitespace *> string "*/")) <|>
+    pure Nothing
+  n <- nxt
+  return (comment, n)

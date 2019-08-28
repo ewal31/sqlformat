@@ -69,13 +69,20 @@ newtype LIMIT_EXP a =
 
 data SELECT_EXP a =
   SELECT [WITH_EXP a]
-         (COLUMNS_EXP a)
+         [COMMENT]
+         (COLUMNS_EXP a) -- TODO comments should be handled here
          (FROM_EXP a)
+         [COMMENT]
          [JOIN_EXP a]
+         [COMMENT]
          (Maybe (WHERE_EXP a))
+         [COMMENT]
          (Maybe (GROUP_BY_EXP a))
+         [COMMENT]
          (Maybe (HAVING_EXP a))
+         [COMMENT]
          (Maybe (ORDER_BY_EXP a))
+         [COMMENT]
          (Maybe (LIMIT_EXP a))
   deriving (Eq, Show)
 

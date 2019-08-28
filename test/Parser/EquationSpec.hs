@@ -203,13 +203,20 @@ testParseEquation =
           (A.S_EXP
              (AS.SELECT
                 []
+                []
                 (AS.COLUMNS Nothing [AS.COLUMN (A.FUNC "max" [A.VAL "id"]) (Just "id")])
                 (AS.FROM Nothing "table")
                 []
+                []
+                []
                 Nothing
+                []
                 Nothing
+                []
                 Nothing
+                []
                 Nothing
+                []
                 Nothing))
       , ()) ~=?
     BP.parseOnly (P.parseEquation BP.endOfInput) "id = (select max(id) as id from table)"

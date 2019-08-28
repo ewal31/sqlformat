@@ -22,13 +22,20 @@ parseSelectExp :: (SubParser b) => Parser a -> Parser (SELECT_EXP b, a)
 parseSelectExp nxt =
   fmap (`applyFnToTuple` ((,) ... SELECT)) $
   parseWithExp $
+  parseComment $
   parseColumnsExp $
   parseFromExp $
+  parseComment $
   parseJoinExp $
-  parseWhereExp $ parseGroupByExp $ parseHavingExp $ parseOrderByExp $ parseLimitExp $ finally nxt
+  parseComment $
+  parseWhereExp $
+  parseComment $
+  parseGroupByExp $
+  parseComment $
+  parseHavingExp $ parseComment $ parseOrderByExp $ parseComment $ parseLimitExp $ finally nxt
 
 parseWithExp :: (SubParser b) => Parser a -> Parser ([WITH_EXP b], a)
-parseWithExp nxt = (anyCaseString "WITH" *>| run nxt) <|> fmap ([], ) nxt
+parseWithExp nxt = (anyCaseString "WITH" *>| run nxt) <|> fmap ([], ) nxt --TODO remove?
   where
     run nxt = do
       name <- fst <$> anyUntilThat (whitespace *> anyCaseString "AS")
@@ -125,20 +132,14 @@ parseColumnExp nxt =
     --   whitespace
     --   (mkEquation name, ) <$> nxt
 
-parseLineComment :: Parser a -> Parser (Maybe COMMENT, a)
-parseLineComment nxt = do
-  comment <-
-    fmap (Just . LINE_COMMENT . fst) (whitespace *> string "--" *> space *> anyUntilThat endOfLine) <|>
-    pure Nothing
-  n <- nxt
-  return (comment, n)
-
-parseBlockComment :: Parser a -> Parser (Maybe COMMENT, a)
-parseBlockComment nxt = do
-  comment <-
-    fmap
-      (Just . BLOCK_COMMENT . fst)
-      (whitespace *> string "/*" *>| anyUntilThat (whitespace *> string "*/")) <|>
-    pure Nothing
-  n <- nxt
-  return (comment, n)
+parseComment :: forall a. Parser a -> Parser ([COMMENT], a)
+parseComment nxt = do
+  comment <- line_comment <|> block_comment <|> pure Nothing
+  maybe
+    (fmap ([], ) nxt)
+    (\c -> fmap (liftA2 (,) (liftA2 (:) (pure c) fst) snd) (whitespace *> parseComment nxt))
+    comment
+  where
+    line_comment = fmap (Just . LINE_COMMENT . fst) (string "--" *> space *> anyUntilThat endOfLine)
+    block_comment =
+      fmap (Just . BLOCK_COMMENT . fst) (string "/*" *>| anyUntilThat (whitespace *> string "*/"))

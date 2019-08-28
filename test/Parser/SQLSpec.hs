@@ -37,22 +37,22 @@ type PFunL a = forall b. BP.Parser b -> BP.Parser ([a AE.EQUATION], b)
 
 testParseComment =
   "parseComment" ~:
-  [ "" ~: Right (Nothing, ()) ~=? BP.parseOnly (P.parseLineComment BP.endOfInput) ""
-  , "-- This is a comment\n" ~: Right (Just (A.LINE_COMMENT "This is a comment"), ()) ~=?
-    BP.parseOnly (P.parseLineComment BP.endOfInput) "-- This is a comment\n"
-  , "-- This is a comment\n\r" ~: Right (Just (A.LINE_COMMENT "This is a comment"), ()) ~=?
-    BP.parseOnly (P.parseLineComment BP.endOfInput) "-- This is a comment\n\r"
-  , "-- This is a comment\nB" ~: Right (Just (A.LINE_COMMENT "This is a comment"), 66) ~=?
-    BP.parseOnly (P.parseLineComment $ BP.word8 66) "-- This is a comment\nB"
-  , "B" ~: Right (Nothing, 66) ~=? BP.parseOnly (P.parseLineComment $ BP.word8 66) "B"
-  , "" ~: Right (Nothing, ()) ~=? BP.parseOnly (P.parseBlockComment BP.endOfInput) ""
-  , "/* This is a comment */" ~: Right (Just (A.BLOCK_COMMENT "This is a comment"), ()) ~=?
-    BP.parseOnly (P.parseBlockComment BP.endOfInput) "/* This is a comment */"
+  [ "" ~: Right ([], ()) ~=? BP.parseOnly (P.parseComment BP.endOfInput) ""
+  , "-- This is a comment\n" ~: Right ([A.LINE_COMMENT "This is a comment"], ()) ~=?
+    BP.parseOnly (P.parseComment BP.endOfInput) "-- This is a comment\n"
+  , "-- This is a comment\n\r" ~: Right ([A.LINE_COMMENT "This is a comment"], ()) ~=?
+    BP.parseOnly (P.parseComment BP.endOfInput) "-- This is a comment\n\r"
+  , "-- This is a comment\nB" ~: Right ([A.LINE_COMMENT "This is a comment"], 66) ~=?
+    BP.parseOnly (P.parseComment $ BP.word8 66) "-- This is a comment\nB"
+  , "B" ~: Right ([], 66) ~=? BP.parseOnly (P.parseComment $ BP.word8 66) "B"
+  , "" ~: Right ([], ()) ~=? BP.parseOnly (P.parseComment BP.endOfInput) ""
+  , "/* This is a comment */" ~: Right ([A.BLOCK_COMMENT "This is a comment"], ()) ~=?
+    BP.parseOnly (P.parseComment BP.endOfInput) "/* This is a comment */"
   , "/* This is a comment \n Something */" ~:
-    Right (Just (A.BLOCK_COMMENT "This is a comment \n Something"), ()) ~=?
-    BP.parseOnly (P.parseBlockComment BP.endOfInput) "/* This is a comment \n Something */"
-  , "/* This is a comment */B" ~: Right (Just (A.BLOCK_COMMENT "This is a comment"), 66) ~=?
-    BP.parseOnly (P.parseBlockComment $ BP.word8 66) "/* This is a comment */B"
+    Right ([A.BLOCK_COMMENT "This is a comment \n Something"], ()) ~=?
+    BP.parseOnly (P.parseComment BP.endOfInput) "/* This is a comment \n Something */"
+  , "/* This is a comment */B" ~: Right ([A.BLOCK_COMMENT "This is a comment"], 66) ~=?
+    BP.parseOnly (P.parseComment $ BP.word8 66) "/* This is a comment */B"
   ]
 
 testParseLimitExp =
@@ -239,13 +239,20 @@ testParseJoinExp =
             (Just $
              A.SELECT
                []
+               []
                (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
                (A.FROM Nothing "table1")
                []
+               []
+               []
                Nothing
+               []
                Nothing
+               []
                Nothing
+               []
                Nothing
+               []
                Nothing)
             "table2"
             Nothing
@@ -272,13 +279,20 @@ testParseJoinExp =
             (Just $
              A.SELECT
                []
+               []
                (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
                (A.FROM Nothing "table1")
                []
+               []
+               []
                Nothing
+               []
                Nothing
+               []
                Nothing
+               []
                Nothing
+               []
                Nothing)
             "table2"
             (Just $ AE.AND (AE.EQU (AE.VAL "a") (AE.VAL "b")) (AE.EQU (AE.VAL "c") (AE.VAL "d")))
@@ -335,13 +349,20 @@ testParseFromExp =
           (Just $
            A.SELECT
              []
+             []
              (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
              (A.FROM Nothing "table")
              []
+             []
+             []
              Nothing
+             []
              Nothing
+             []
              Nothing
+             []
              Nothing
+             []
              Nothing)
           "catalog"
       , (Nothing, (Nothing, (Nothing, (Nothing, (Nothing, ())))))) ~=?
@@ -359,13 +380,20 @@ testParseFromExp =
           (Just $
            A.SELECT
              []
+             []
              (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
              (A.FROM Nothing "table")
              []
+             []
+             []
              Nothing
+             []
              Nothing
+             []
              Nothing
+             []
              Nothing
+             []
              Nothing)
           "catalog"
       , ( [ A.JOIN
@@ -373,15 +401,22 @@ testParseFromExp =
               (Just $
                A.SELECT
                  []
+                 []
                  (A.COLUMNS
                     Nothing
                     [A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.VAL "apples") Nothing])
                  (A.FROM Nothing "table")
                  []
+                 []
+                 []
                  Nothing
+                 []
                  Nothing
+                 []
                  Nothing
+                 []
                  Nothing
+                 []
                  Nothing)
               "table2"
               (Just $
@@ -454,13 +489,20 @@ testParseWithExp =
       ( []
       , ( A.SELECT
             []
+            []
             (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test")
             []
+            []
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
         , ())) ~=?
     BP.parseOnly
@@ -471,13 +513,20 @@ testParseWithExp =
       ( [ A.WITH "a" $
           A.SELECT
             []
+            []
             (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test")
             []
+            []
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
         ]
       , ()) ~=?
@@ -487,24 +536,38 @@ testParseWithExp =
       ( [ A.WITH "a" $
           A.SELECT
             []
+            []
             (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test")
             []
+            []
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
         , A.WITH "b" $
           A.SELECT
             []
+            []
             (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
             (A.FROM Nothing "test2")
             []
+            []
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
+            []
             Nothing
         ]
       , ()) ~=?
@@ -546,38 +609,184 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM test"
+  , "SELECT * FROM test -- Comment\n" ~:
+    Right
+      ( A.SELECT
+          []
+          []
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
+          (A.FROM Nothing "test")
+          [A.LINE_COMMENT "Comment"]
+          []
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+      , ()) ~=?
+    BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM test -- Comment\n"
+  , "SELECT * FROM test -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */" ~:
+    Right
+      ( A.SELECT
+          []
+          []
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
+          (A.FROM Nothing "test")
+          [ A.LINE_COMMENT "Comment"
+          , A.LINE_COMMENT "Comment 2"
+          , A.BLOCK_COMMENT "Block Comment \n Line 2"
+          ]
+          []
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseSelectExp BP.endOfInput)
+      "SELECT * FROM test -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */"
+  , "SELECT * FROM test ORDER BY a -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */" ~:
+    Right
+      ( A.SELECT
+          []
+          []
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
+          (A.FROM Nothing "test")
+          []
+          []
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+          []
+          (Just $ A.ORDER_BY $ AE.VAL "a")
+          [ A.LINE_COMMENT "Comment"
+          , A.LINE_COMMENT "Comment 2"
+          , A.BLOCK_COMMENT "Block Comment \n Line 2"
+          ]
+          Nothing
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseSelectExp BP.endOfInput)
+      "SELECT * FROM test ORDER BY a -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */"
+  , "SELECT * FROM test GROUP BY a -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */ LIMIT 100" ~:
+    Right
+      ( A.SELECT
+          []
+          []
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
+          (A.FROM Nothing "test")
+          []
+          []
+          []
+          Nothing
+          []
+          (Just $ A.GROUP_BY $ AE.VAL "a")
+          [ A.LINE_COMMENT "Comment"
+          , A.LINE_COMMENT "Comment 2"
+          , A.BLOCK_COMMENT "Block Comment \n Line 2"
+          ]
+          Nothing
+          []
+          Nothing
+          []
+          (Just $ A.LIMIT $ AE.VAL "100")
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseSelectExp BP.endOfInput)
+      "SELECT * FROM test GROUP BY a -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */ LIMIT 100"
+  , "SELECT * FROM test -- WoW! \n GROUP BY a -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */ LIMIT 100" ~:
+    Right
+      ( A.SELECT
+          []
+          []
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
+          (A.FROM Nothing "test")
+          [A.LINE_COMMENT "WoW!"]
+          []
+          []
+          Nothing
+          []
+          (Just $ A.GROUP_BY $ AE.VAL "a")
+          [ A.LINE_COMMENT "Comment"
+          , A.LINE_COMMENT "Comment 2"
+          , A.BLOCK_COMMENT "Block Comment \n Line 2"
+          ]
+          Nothing
+          []
+          Nothing
+          []
+          (Just $ A.LIMIT $ AE.VAL "100")
+      , ()) ~=?
+    BP.parseOnly
+      (P.parseSelectExp BP.endOfInput)
+      "SELECT * FROM test -- WoW! \n GROUP BY a -- Comment\n -- Comment 2\n /* Block Comment \n Line 2 */ LIMIT 100"
   , "WITH b AS (SELECT * FROM test) SELECT MAX(id) FROM b" ~:
     Right
       ( A.SELECT
           [ A.WITH "b" $
             A.SELECT
               []
+              []
               (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
               (A.FROM Nothing "test")
               []
+              []
+              []
               Nothing
+              []
               Nothing
+              []
               Nothing
+              []
               Nothing
+              []
               Nothing
           ]
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.FUNC "MAX" [AE.VAL "id"]) Nothing])
           (A.FROM Nothing "b")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly
@@ -587,25 +796,39 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM
              (Just $
               A.SELECT
                 []
+                []
                 (A.COLUMNS (Just A.DISTINCT) [A.COLUMN (AE.VAL "*") Nothing])
                 (A.FROM Nothing "test")
                 []
+                []
+                []
                 Nothing
+                []
                 Nothing
+                []
                 Nothing
+                []
                 Nothing
+                []
                 Nothing)
              "test")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM (SELECT DISTINCT * FROM test) test"
@@ -613,13 +836,20 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.VAL "a.*") Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT a.* FROM test"
@@ -627,13 +857,20 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS (Just A.DISTINCT) [A.COLUMN (AE.VAL "name") Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT DISTINCT name FROM test"
@@ -641,13 +878,20 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           (Just $ A.LIMIT $ AE.VAL "1000")
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM test LIMIT 1000"
@@ -655,13 +899,20 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           (Just $ A.WHERE $ AE.EQU (AE.VAL "id") (AE.VAL "23"))
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM test WHERE id = 23"
@@ -669,15 +920,22 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
           (A.FROM Nothing "test")
+          []
+          []
           []
           (Just $
            A.WHERE $
            AE.AND (AE.EQU (AE.VAL "id") (AE.VAL "23")) (AE.EQU (AE.VAL "ab") (AE.VAL "ba")))
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM test WHERE id = 23 AND ab = ba"
@@ -685,15 +943,22 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS
              Nothing
              [A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.FUNC "COUNT" [AE.VAL "1"]) Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           (Just $ A.GROUP_BY $ AE.VAL "id")
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT id, COUNT(1) FROM test GROUP BY id"
@@ -701,15 +966,22 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS
              Nothing
              [A.COLUMN (AE.VAL "id") Nothing, A.COLUMN (AE.FUNC "MAX" [AE.VAL "id"]) (Just "MAX")])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT id, MAX(id) AS MAX FROM test"
@@ -717,15 +989,22 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS
              Nothing
              [A.COLUMN (AE.VAL "name") Nothing, A.COLUMN (AE.FUNC "SUM" [AE.VAL "val"]) Nothing])
           (A.FROM Nothing "test")
           []
+          []
+          []
           Nothing
+          []
           (Just (A.GROUP_BY $ AE.VAL "name"))
+          []
           (Just $ A.HAVING $ AE.GREAT (AE.FUNC "COUNT" [AE.VAL "1"]) (AE.VAL " 2"))
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly
@@ -735,15 +1014,22 @@ testParseSelectExp =
     Right
       ( A.SELECT
           []
+          []
           (A.COLUMNS
              Nothing
              [A.COLUMN (AE.VAL "name") Nothing, A.COLUMN (AE.FUNC "SUM" [AE.VAL "val"]) Nothing])
           (A.FROM Nothing "test")
+          []
           [A.JOIN A.RIGHT Nothing "table2" (Just $ AE.EQU (AE.VAL "name") (AE.VAL "'Wendy'"))]
+          []
           Nothing
+          []
           (Just (A.GROUP_BY $ AE.VAL "name"))
+          []
           (Just $ A.HAVING $ AE.GREAT (AE.FUNC "COUNT" [AE.VAL "1"]) (AE.VAL " 2"))
+          []
           Nothing
+          []
           Nothing
       , ()) ~=?
     BP.parseOnly

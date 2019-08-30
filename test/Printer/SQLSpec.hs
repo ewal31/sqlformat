@@ -28,17 +28,38 @@ type StringBuffer = Buffer String
 instance P.Output String StringBuffer where
   write x = Buffer ((), x)
 
-runWithBuffer :: P.WriteAction StringBuffer -> P.Indent -> String
-runWithBuffer actions indent = m
+runWithBuffer' :: P.WriteAction StringBuffer -> P.Indent -> String
+runWithBuffer' actions indent = m
   where
     (Buffer (a, m)) = P.runWriteAction actions indent
 
-tests = TestList [testPrint]
+runWithBuffer :: P.Writer StringBuffer -> P.Indent -> String
+runWithBuffer (P.Writer (actions, _)) indent = m
+  where
+    (Buffer (a, m)) = P.runWriteAction actions indent
 
-testPrint =
-  "testConst" ~:
-  [ "0" ~: "const" ~=? runWithBuffer P.writeConst 0
-  , "0" ~: "constconst" ~=? runWithBuffer (P.writeConst <> P.writeConst) 0
-  , "0" ~: "const\nconst" ~=? runWithBuffer (P.writeConst <> P.newline <> P.writeConst) 0
-  , "4" ~: "    const\n    const" ~=? runWithBuffer (P.writeConst <> P.newline <> P.writeConst) 4
+tests = TestList [testWriteAction, testWriter]
+
+testWriteAction =
+  "writeAction" ~:
+  [ "0" ~: "" ~=? runWithBuffer' mempty 0
+  , "4" ~: "" ~=? runWithBuffer' mempty 4
+  , "0" ~: "const" ~=? runWithBuffer' P.writeConst' 0
+  , "0" ~: "constconst" ~=? runWithBuffer' (P.writeConst' <> P.writeConst') 0
+  , "0" ~: "const\nconst" ~=? runWithBuffer' (P.writeConst' <> P.newline' <> P.writeConst') 0
+  , "4" ~: "    const\n    const" ~=?
+    runWithBuffer' (P.writeConst' <> P.newline' <> P.writeConst') 4
+  ]
+
+testWriter =
+  "writer" ~:
+  [ "0" ~: "" ~=? runWithBuffer mempty 0
+  , "0" ~: "const" ~=? runWithBuffer P.writeConst 0
+  , "0" ~: "const    const" ~=? runWithBuffer (P.writeConst <> P.indent <> P.writeConst) 0
+  , "0" ~: "const    const    const" ~=?
+    runWithBuffer (P.writeConst <> P.indent <> P.writeConst <> P.writeConst) 0
+  , "0" ~: "const    constconst" ~=?
+    runWithBuffer (P.writeConst <> P.indent <> P.writeConst <> P.undent <> P.writeConst) 0
+  , "0" ~: "const        const" ~=?
+    runWithBuffer (P.writeConst <> P.indent <> P.indent <> P.writeConst) 0
   ]

@@ -3,32 +3,49 @@
 
 module Printer.SQL where
 
+import AST.Equation
+import Data.ByteString.Char8 (unpack)
 import Data.Monoid (Sum(..))
 
-type Indent = Int
+type Context = Sum Int
 
-newtype WriteAction m = WA
-  { runWriteAction :: (Output String m) =>
-                        Indent -> m ()
+type Out = String
+
+newtype WriteAction m a = WA
+  { runWriteAction :: (Output Out m) =>
+                        a -> m ()
   }
 
-instance (Monad m) => Semigroup (WriteAction m) where
-  (WA w1) <> (WA w2) = WA $ \indent -> w1 indent >> w2 indent
+instance (Monad m) => Semigroup (WriteAction m a) where
+  (WA w1) <> (WA w2) = WA $ \c -> w1 c >> w2 c
 
-instance (Monad m) => Monoid (WriteAction m) where
+instance (Monad m) => Monoid (WriteAction m a) where
   mempty = WA $ const (pure mempty)
 
-newtype Writer m = Writer
-  { runWriter :: (WriteAction m, Sum Indent)
+newtype ContextualWriter m a = Writer
+  { runWriter :: (WriteAction m a, a)
   }
 
-instance (Monad m) => Semigroup (Writer m) where
+instance (Monad m, Monoid a) => Semigroup (ContextualWriter m a) where
   (Writer (w1, n1)) <> (Writer (w2, n2)) = Writer (w1 <> (n1 · w2), n1 <> n2)
     where
-      (Sum n) · (WA w) = WA $ \indent -> w (indent + n)
+      n · (WA w) = WA $ \c -> w (n <> c)
 
-instance (Monad m) => Monoid (Writer m) where
+instance (Monad m, Monoid a) => Monoid (ContextualWriter m a) where
   mempty = Writer (mempty, mempty)
+
+type Writer m
+   = (Monad m) =>
+       ContextualWriter m Context
+
+writer :: (Context -> Out) -> Writer m
+writer f = Writer (WA $ write . f, mempty)
+
+string :: String -> Writer m
+string s = writer $ \ind -> run ind
+  where
+    run 0 = s
+    run ind = ' ' : run (ind - 1)
 
 class (Monad m) =>
       Output w m | m -> w where
@@ -37,23 +54,34 @@ class (Monad m) =>
 instance Output String IO where
   write = print
 
-newline' :: WriteAction m
-newline' = WA $ \_ -> write "\n"
-
-newline :: Writer m
-newline = Writer (newline', mempty)
-
-indent :: (Monad m) => Writer m
+indent :: Writer m
 indent = Writer (mempty, pure 4)
 
-undent :: (Monad m) => Writer m
+undent :: Writer m
 undent = Writer (mempty, pure (-4))
 
-writeConst' :: WriteAction m
+indent' :: Writer m -> Writer m
+indent' p = indent <> p <> undent
+
+(<->) :: Writer m -> Writer m -> Writer m
+x <-> y = x <> string " " <> y
+
+newline :: Writer m
+newline = string "\n"
+
+writeConst :: Writer m
+writeConst = string "const"
+
+newline' :: WriteAction m a
+newline' = WA $ \_ -> write "\n"
+
+writeConst' :: (Num a, Eq a) => WriteAction m a
 writeConst' = WA $ \ind -> write $ run ind
   where
     run 0 = "const"
     run ind = ' ' : run (ind - 1)
 
-writeConst :: Writer m
-writeConst = Writer (writeConst', mempty)
+writeEquation :: EQUATION -> Writer m
+writeEquation (VAL x) = string . unpack $ x
+writeEquation (EQU x y) = writeEquation x <-> string "=" <-> writeEquation y
+writeEquation (AND x y) = writeEquation x <-> string "AND" <-> writeEquation y

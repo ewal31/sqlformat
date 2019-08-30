@@ -1,7 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings, MultiParamTypeClasses, RankNTypes,
+  MonoLocalBinds, FlexibleContexts, FlexibleInstances #-}
 
 module Printer.SQLSpec where
 
+import qualified AST.Equation as AE
 import qualified Printer.SQL as P
 import Test.HUnit
 
@@ -28,17 +30,17 @@ type StringBuffer = Buffer String
 instance P.Output String StringBuffer where
   write x = Buffer ((), x)
 
-runWithBuffer' :: P.WriteAction StringBuffer -> P.Indent -> String
+runWithBuffer' :: P.WriteAction StringBuffer P.Context -> P.Context -> String
 runWithBuffer' actions indent = m
   where
     (Buffer (a, m)) = P.runWriteAction actions indent
 
-runWithBuffer :: P.Writer StringBuffer -> P.Indent -> String
+runWithBuffer :: P.Writer StringBuffer -> P.Context -> String
 runWithBuffer (P.Writer (actions, _)) indent = m
   where
     (Buffer (a, m)) = P.runWriteAction actions indent
 
-tests = TestList [testWriteAction, testWriter]
+tests = TestList [testWriteAction, testWriter, testWriteEquation]
 
 testWriteAction =
   "writeAction" ~:
@@ -62,4 +64,15 @@ testWriter =
     runWithBuffer (P.writeConst <> P.indent <> P.writeConst <> P.undent <> P.writeConst) 0
   , "0" ~: "const        const" ~=?
     runWithBuffer (P.writeConst <> P.indent <> P.indent <> P.writeConst) 0
+  ]
+
+testWriteEquation =
+  "writeEquation" ~:
+  [ "VAL" ~: "x" ~=? runWithBuffer (P.writeEquation (AE.VAL "x")) 0
+  , "EQU" ~: "x = 1" ~=? runWithBuffer (P.writeEquation (AE.EQU (AE.VAL "x") (AE.VAL "1"))) 0
+  , "AND" ~: "x = 1 AND y = 2" ~=?
+    runWithBuffer
+      (P.writeEquation
+         (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2"))))
+      0
   ]

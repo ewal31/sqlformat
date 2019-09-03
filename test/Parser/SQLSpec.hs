@@ -1035,4 +1035,29 @@ testParseSelectExp =
     BP.parseOnly
       (P.parseSelectExp BP.endOfInput)
       "SELECT name, SUM(val) FROM test RIGHT OUTER JOIN table2 ON name = 'Wendy' GROUP BY name HAVING COUNT(1) > 2"
+  , "SELECT * FROM a WHERE x = 1 AND y = 2 AND Z = 3" ~:
+    Right
+      ( A.SELECT
+          []
+          []
+          (A.COLUMNS Nothing [A.COLUMN (AE.VAL "*") Nothing])
+          (A.FROM Nothing "a")
+          []
+          []
+          []
+          (Just
+             (A.WHERE
+                (AE.AND
+                   (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
+                   (AE.EQU (AE.VAL "Z") (AE.VAL "3")))))
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+          []
+          Nothing
+      , ()) ~=?
+    BP.parseOnly (P.parseSelectExp BP.endOfInput) "SELECT * FROM a WHERE x = 1 AND y = 2 AND Z = 3"
   ]

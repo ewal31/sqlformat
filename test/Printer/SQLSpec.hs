@@ -30,14 +30,14 @@ instance (Monoid m) => Monad (Buffer m) where
 type StringBuffer = Buffer String
 
 instance P.Output String StringBuffer P.Context where
-  write s c = Buffer (c <> ((\p -> P.C p mempty mempty mempty) . pure . length $ s), s)
+  write s c = Buffer (c <> (P.fromPos . pure . length $ s), s)
 
 runWithBuffer :: P.Writer StringBuffer P.Context -> P.Context -> (String, Sum Int)
-runWithBuffer (P.Writer actions _) indent = (m, a)
+runWithBuffer actions context = (m, P.pos c)
   where
-    (Buffer (P.C a _ _ _, m)) = P.runWriteAction actions indent
+    (Buffer (c, m)) = P.runWriter actions context
 
-tests = TestList [testWriteAndMeasure]
+tests = TestList [testWriteAndMeasure, testWriteEquation]
 
 testWriteAndMeasure =
   "testWriteAndMeasure" ~:
@@ -49,93 +49,75 @@ testWriteAndMeasure =
     runWithBuffer (P.indent $ P.newline <> P.string "string") mempty
   , "string1\n    string2" ~: ("string1\n    string2", pure 11) ~=?
     runWithBuffer (P.string "string1" <> P.indent (P.newline <> P.string "string2")) mempty
-  , "        string" ~: ("        string", pure 14) ~=?
-    runWithBuffer (P.set' 8 (P.catchup' <> P.string "string")) mempty
-  , "ONstring" ~: ("ONstring", pure 8) ~=?
-    runWithBuffer (P.string "ON" <> P.set' 2 (P.catchup' <> P.string "string")) mempty
-  , "     string" ~: ("     string", pure 11) ~=?
-    runWithBuffer (P.catchup <> P.string "string") (P.C mempty mempty mempty (stackPush stackNew 5))
-  , "WHERE\n     string" ~: ("WHERE\n     string", pure 11) ~=?
-    runWithBuffer (P.string "WHERE" <> P.set (P.newline <> P.catchup <> P.string "string")) mempty
+  , "Manual Set Catchup" ~: ("          string", pure 16) ~=?
+    runWithBuffer (P.catchup P.set1 <> P.string "string") (P.fromSet1 . pure $ 10)
+  , "WHERE like Set and Catchup" ~: ("WHERE\n     string", pure 11) ~=?
+    runWithBuffer
+      (P.string "WHERE" <>
+       P.set P.set1 P.fromSet1 (P.newline <> P.catchup P.set1 <> P.string "string"))
+      mempty
+  , "Embedded Set and Catchup" ~: ("WHERE\n     string", pure 11) ~=?
+    runWithBuffer
+      (P.string "WHERE" <>
+       P.set P.set1 P.fromSet1 (P.newline <> P.catchup P.set1 <> P.string "string"))
+      (P.fromSet1 . pure $ 10)
+  , "Embedded Set and Catchup 2" ~: ("0123456789\nWHERE\n     string", pure 11) ~=?
+    runWithBuffer
+      (P.string "0123456789" <>
+       P.set
+         P.set1
+         P.fromSet1
+         (P.newline <> P.string "WHERE" <>
+          P.set P.set1 P.fromSet1 (P.newline <> P.catchup P.set1 <> P.string "string")))
+      mempty
   ]
--- runWithBuffer' :: P.WriteAction StringBuffer P.Context -> P.Context -> String
--- runWithBuffer' actions indent = m
---   where
---     (Buffer (a, m)) = P.runWriteAction actions indent
--- 
--- tests = TestList [testWriteAndMeasure]
--- 
--- writeConst :: P.Writer m
--- writeConst = P.string "const"
--- testWriteAction =
---   "writeAction" ~:
---   [ "0" ~: "" ~=? runWithBuffer' mempty (P.Context 0 0)
---   , "4" ~: "" ~=? runWithBuffer' mempty (P.Context 4 0)
---   , "0" ~: "const" ~=? runWithBuffer' P.writeConst' (P.Context 0 0)
---   , "0" ~: "constconst" ~=? runWithBuffer' (P.writeConst' <> P.writeConst') (P.Context 0 0)
---   , "0" ~: "const\nconst" ~=?
---     runWithBuffer' (P.writeConst' <> P.newline' <> P.writeConst') (P.Context 0 0)
---   , "4" ~: "    const\n    const" ~=?
---     runWithBuffer' (P.writeConst' <> P.newline' <> P.writeConst') (P.Context 4 0)
---   ]
--- testWriter =
---   "writer" ~:
---   [ "0" ~: "" ~=? runWithBuffer mempty mempty
---   , "0" ~: "const" ~=? runWithBuffer P.writeConst mempty
---   , "0" ~: "const    const" ~=? runWithBuffer (P.writeConst <> P.indent <> P.writeConst) mempty
---   , "0" ~: "const    const    const" ~=?
---     runWithBuffer (P.writeConst <> P.indent <> P.writeConst <> P.writeConst) mempty
---   , "0" ~: "const    constconst" ~=?
---     runWithBuffer
---       (P.writeConst <> P.indent <> P.writeConst <> P.undent <> P.writeConst)
---       (P.Context 0 0)
---   , "0" ~: "const        const" ~=?
---     runWithBuffer (P.writeConst <> P.indent <> P.indent <> P.writeConst) mempty
---   ]
--- testWriteEquation =
---   "writeEquation" ~:
---   [ "VAL" ~: "x" ~=? runWithBuffer (P.writeEquation (AE.VAL "x")) mempty
---   , "EQU" ~: "x = 1" ~=? runWithBuffer (P.writeEquation (AE.EQU (AE.VAL "x") (AE.VAL "1"))) mempty
---   , "1 AND" ~: "x = 1\nAND y = 2" ~=?
---     runWithBuffer
---       (P.writeEquation
---          (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2"))))
---       mempty
---   , "2 AND" ~: "x = 1\nAND y = 2\nAND z = 3" ~=?
---     runWithBuffer
---       (P.writeEquation
---          (AE.AND
---             (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
---             (AE.EQU (AE.VAL "z") (AE.VAL "3"))))
---       mempty
---   -- , "AND" ~: "x = 1\n    AND y = 2\n    AND z = 3" ~=?
---   --   runWithBuffer
---   --     (P.writeEquation
---   --        (AE.AND
---   --           (AE.EQU (AE.VAL "z") (AE.VAL "3"))
---   --           (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))))
---   --     mempty
---   , "3 AND" ~: "x = 1\nAND y = 2\nAND z = 3\nAND a = 4" ~=?
---     runWithBuffer
---       (P.writeEquation
---          (AE.AND
---             (AE.AND
---                (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
---                (AE.EQU (AE.VAL "z") (AE.VAL "3")))
---             (AE.EQU (AE.VAL "a") (AE.VAL "4"))))
---       mempty
---   -- , "2 AND as WHERE" ~: "WHERE x = 1\nAND   y = 2\nAND   z = 3" ~=? "WHERE " ++
---   --   runWithBuffer
---   --     (P.writeEquation
---   --        (AE.AND
---   --           (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
---   --           (AE.EQU (AE.VAL "z") (AE.VAL "3"))))
---   --     (P.Context 1 2 0 0) -- as if with where justified
---   -- , "2 AND as ON" ~: "ON  x = 1\nAND y = 2\nAND z = 3" ~=? "ON " ++
---   --   runWithBuffer
---   --     (P.writeEquation
---   --        (AE.AND
---   --           (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
---   --           (AE.EQU (AE.VAL "z") (AE.VAL "3"))))
---   --     (P.Context 1 4 0 0) -- as if with justified and indented ON
---   ]
+
+testWriteEquation =
+  "writeEquation" ~:
+  [ "VAL" ~: ("x", pure 1) ~=? runWithBuffer (P.writeEquation (AE.VAL "x")) mempty
+  , "EQU" ~: ("x = 1", pure 5) ~=?
+    runWithBuffer (P.writeEquation (AE.EQU (AE.VAL "x") (AE.VAL "1"))) mempty
+  , "1 AND" ~: ("x = 1\nAND y = 2", pure 9) ~=?
+    runWithBuffer
+      (P.writeEquation
+         (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2"))))
+      mempty
+  , "2 AND" ~: ("x = 1\nAND y = 2\nAND z = 3", pure 9) ~=?
+    runWithBuffer
+      (P.writeEquation
+         (AE.AND
+            (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
+            (AE.EQU (AE.VAL "z") (AE.VAL "3"))))
+      mempty
+  , "3 AND" ~: ("x = 1\nAND y = 2\nAND z = 3\nAND a = 4", pure 9) ~=?
+    runWithBuffer
+      (P.writeEquation
+         (AE.AND
+            (AE.AND
+               (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
+               (AE.EQU (AE.VAL "z") (AE.VAL "3")))
+            (AE.EQU (AE.VAL "a") (AE.VAL "4"))))
+      mempty
+  , "2 AND as WHERE" ~: ("WHERE x = 1\nAND   y = 2\nAND   z = 3", pure 11) ~=?
+    runWithBuffer
+      (P.string "WHERE" P.<->
+       P.set
+         P.set1
+         P.fromSet1
+         (P.writeEquation
+            (AE.AND
+               (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
+               (AE.EQU (AE.VAL "z") (AE.VAL "3")))))
+      (P.fromSet1 . pure $ 5) -- as if with where justified
+  , "2 AND as ON" ~: ("ON  x = 1\nAND y = 2\nAND z = 3", pure 9) ~=?
+    runWithBuffer
+      (P.string "ON  " <>
+       P.set
+         P.set1
+         P.fromSet1
+         (P.writeEquation
+            (AE.AND
+               (AE.AND (AE.EQU (AE.VAL "x") (AE.VAL "1")) (AE.EQU (AE.VAL "y") (AE.VAL "2")))
+               (AE.EQU (AE.VAL "z") (AE.VAL "3")))))
+      (P.fromSet1 . pure $ 5) -- as if with on justified
+  ]
